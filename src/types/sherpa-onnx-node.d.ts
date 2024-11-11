@@ -1,24 +1,50 @@
 declare module 'sherpa-onnx-node' {
-    export interface InitOptions {
-        deviceId?: number;  // CPU = -1, GPU = 0,1,etc.
+    interface TransducerConfig {
+        encoder: string;
+        decoder: string;
+        joiner: string;
     }
 
-    export interface SherpaConfig {
-        modelPath: string;
-        deviceId: number;  // CPU = -1, GPU = 0,1,etc.
-    }
-
-    export interface STTConfig extends SherpaConfig {
+    interface FeatConfig {
         sampleRate: number;
-        channels: number;
+        featureDim: number;
     }
 
-    export interface TTSConfig extends SherpaConfig {
-        speakerId?: number;
-        speed?: number;
+    interface DecodingConfig {
+        method: "greedy_search" | "modified_beam_search";
     }
 
-    export function init(options?: InitOptions): Promise<void>;
-    export function transcribe(config: STTConfig, audioData: ArrayBuffer): Promise<string>;
-    export function synthesize(config: TTSConfig, text: string): Promise<ArrayBuffer>;
+    export interface OnlineRecognizerConfig {
+        transducer: TransducerConfig;
+        tokens: string;
+        modelConfig?: string;
+        featConfig: FeatConfig;
+        decodingConfig: DecodingConfig;
+        enableEndpoint?: boolean;
+        rule1MinTrailingSilence?: number;
+        decoderConfig?: Record<string, unknown>;
+        hotwordsFile?: string;
+        hotwordsScore?: number;
+    }
+
+    export interface OfflineTtsConfig {
+        model: string;
+        modelConfig: string;
+        tokens: string;
+        numThreads?: number;
+        debug?: boolean;
+    }
+
+    export class OnlineRecognizer {
+        constructor(config: OnlineRecognizerConfig);
+        acceptWaveform(samples: Float32Array): void;
+        decode(): void;
+        getResult(): string;
+        reset(): void;
+    }
+
+    export class OfflineTts {
+        constructor(config: OfflineTtsConfig);
+        generate(text: string): { sampleRate: number; samples: Float32Array };
+    }
 } 

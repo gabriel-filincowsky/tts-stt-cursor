@@ -15,17 +15,42 @@
     "commands": [
       {
         "command": "tts-stt-cursor.startSTT",
-        "title": "Start Speech-to-Text"
+        "title": "Start Speech-to-Text",
+        "icon": "$(mic)"
       },
       {
         "command": "tts-stt-cursor.startTTS",
-        "title": "Start Text-to-Speech"
+        "title": "Start Text-to-Speech",
+        "icon": "$(megaphone)"
       },
       {
         "command": "tts-stt-cursor.selectVoice",
-        "title": "Select TTS Voice"
+        "title": "Select TTS Voice",
+        "icon": "$(settings-gear)"
       }
-    ]
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "tts-stt-cursor.startSTT",
+          "group": "navigation"
+        },
+        {
+          "command": "tts-stt-cursor.startTTS",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TTS-STT for Cursor",
+      "properties": {
+        "tts-stt-cursor.enableMicrophone": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable microphone access for speech recognition"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -36,7 +61,9 @@
     "test": "node ./out/test/runTest.js"
   },
   "dependencies": {
-    "sherpa-onnx-node": "^1.10.30"
+    "sherpa-onnx-node": "^1.10.30",
+    "tar": "^6.2.0",
+    "unbzip2-stream": "^1.4.3"
   },
   "devDependencies": {
     "@types/node": "^16.18.119",
@@ -47,18 +74,19 @@
     "eslint": "^8.57.1",
     "typescript": "^5.6.3"
   },
+  "enabledApiProposals": [
+    "speech"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true,
+      "description": "This extension requires microphone access for speech recognition"
+    }
+  },
   "private": true,
   "files": [
     "out/**/*",
     "models/**/*",
     "media/**/*"
-  ],
-  "extensionDependencies": [],
-  "extensionKind": ["workspace"],
-  "capabilities": {
-    "virtualWorkspaces": false,
-    "untrustedWorkspaces": {
-      "supported": true
-    }
-  }
+  ]
 }

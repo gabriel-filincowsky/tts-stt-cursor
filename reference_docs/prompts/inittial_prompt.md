@@ -8,78 +8,131 @@ For now, just confirm that you understand the context and then acknowledge it. N
 
 ***********************
 
-We are following the implementation plan step by step.
+# Project Context: TTS-STT for Cursor Extension Development
 
-I already execute the steps marked with an 'x' in the 'small implementation plan' file.
+## Project Overview
+We are developing a VS Code extension called "TTS-STT for Cursor" that integrates speech-to-text (STT) and text-to-speech (TTS) capabilities using the Sherpa-onnx framework. The extension is being developed in TypeScript and uses the sherpa-onnx-node native addon.
 
-## Checklist of Steps
+## Current Implementation State
+We have successfully implemented:
+1. Basic extension structure
+2. Model management system
+3. Automatic model extraction from .tar.bz2 files
+4. Type definitions for Sherpa-onnx interfaces
+5. Basic UI with webview integration
 
-1. **Project Initialization**
-    - [x] Create the project directory structure.
-    - [x] Initialize npm and set up the development environment.
-    - [x] Configure TypeScript compiler options.
+## Current Challenge
+We are encountering initialization errors with Sherpa-onnx, specifically:
+- Error message: "Please check your config!"
+- Location: During OnlineRecognizer initialization
+- Context: After model extraction and verification succeeds
 
-2. **Set Up Version Control**
-    - [x] Initialize a Git repository.
-    - [x] Create a `.gitignore` file.
-
-3. **Install Dependencies**
-    - [x] Install VS Code extension development dependencies.
-    - [x] Install Sherpa-onnx Node.js package.
-
-4. **Create Essential Files**
-    - [x] Create the extension manifest (`package.json`).
-    - [x] Create the main extension entry point (`extension.ts`).
-    - [x] Set up the Webview files (`index.html`, `script.js`, `style.css`).
-    - [x] Configure VS Code launch and task configurations.
-
-5. **Implement STT Functionality**
-    - [x] Download the STT/ASR models.
-    - [x] Set up audio input capture in the Webview.
-    - [x] Integrate Sherpa-onnx STT processing in the extension.
-    - [x] Handle transcription results and display them in the IDE.
-
-6. **Implement TTS Functionality**
-    - [x] Download the TTS models.
-    - [x] Capture text input or selection from the user.
-    - [x] Integrate Sherpa-onnx TTS processing in the extension.
-    - [x] Play the synthesized audio in the Webview.
-
-7. **Handle Permissions and Security**
-    - [ ] Implement microphone permission requests.
-    - [ ] Set up Content Security Policy (CSP) for the Webview.
-    - [ ] Ensure data privacy by keeping processing local.
-
----
-
-For your reference, here is my plan for the substeps in step 7. Use them as a guide to complete the steps, but feel free to deviate if you see a better way.
-
-### 7. Handle Permissions and Security
-
-Implement proper permission requests for accessing the microphone, providing clear messages to the user about why permissions are needed. Set up a Content Security Policy for the webview to enhance security and prevent unauthorized content execution. Ensure that all data processing occurs locally, maintaining user privacy and data security.
-
-#### a. Implement Microphone Permission Requests
-
-Ensure that the webview properly requests microphone access and handles user denial gracefully.
-
-#### b. Set Up Content Security Policy (CSP) for the Webview
-
-In `extension.ts`, when setting the HTML content, include a nonce and define a strict CSP:
-
-```typescript
-function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
-  const nonce = getNonce();
-  // Replace '{{nonce}}' in index.html with the generated nonce
-  // Set CSP in the HTML head
-}
+## File Structure
+```
+tts-stt-cursor/
+├── src/
+│   ├── extension.ts          (Main extension logic)
+│   ├── model-manager.ts      (Model handling)
+│   ├── types/
+│   │   ├── sherpa-onnx-node.d.ts
+│   │   ├── tar.d.ts
+│   │   └── unbzip2-stream.d.ts
+│   └── webview/
+│       ├── script.js
+│       └── style.css
+└── models/
+    ├── stt/
+    │   ├── sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2
+    │   └── sherpa-onnx-streaming-zipformer-en-2023-06-26/
+    │       ├── encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx
+    │       ├── decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx
+    │       ├── joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx
+    │       └── tokens.txt
+    └── tts/
+        ├── vits-piper-en_US-amy-low.tar.bz2
+        └── vits-piper-en_US-amy-low/
+            ├── en_US-amy-low.onnx
+            ├── en_US-amy-low.onnx.json
+            └── tokens.txt
 ```
 
-#### c. Ensure Data Privacy by Keeping Processing Local
+## Recent Progress
+1. Successfully implemented model extraction without intermediary folders
+2. Fixed circular reference issues in debugging
+3. Updated type definitions for Sherpa-onnx
+4. Implemented proper configuration structure for STT/TTS
 
-Confirm that all data processing occurs locally and no data is sent to external servers.
+## Current Configuration
+```typescript
+const sttConfig: OnlineRecognizerConfig = {
+    transducer: {
+        encoder: "[path]/encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
+        decoder: "[path]/decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
+        joiner: "[path]/joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
+    },
+    tokens: "[path]/tokens.txt",
+    featConfig: {
+        sampleRate: 16000,
+        featureDim: 80
+    },
+    decodingConfig: {
+        method: "greedy_search"
+    },
+    enableEndpoint: true
+};
+```
 
----
+## Next Steps
+1. Review Sherpa-onnx documentation for correct configuration requirements
+2. Verify model file structure matches Sherpa-onnx expectations
+3. Implement proper error handling for configuration issues
+4. Test initialization with verified configuration
 
-Before continuing, review the steps already marked as executed to ensure completeness and correctness.
+## Critical Points for Continuation
+1. The models are successfully extracted and verified
+2. All required files are present and accessible
+3. The configuration structure is defined but may need adjustment
+4. We need to understand Sherpa-onnx's exact configuration requirements
 
-@codebase
+## 👉👉👉 Research Objective: Understanding Sherpa-onnx Requirements
+
+The primary focus of our next session is to conduct a thorough investigation of Sherpa-onnx's implementation requirements and expected configurations. This research phase is crucial as we've encountered initialization errors that suggest a misalignment between our current configuration approach and Sherpa-onnx's expectations.
+
+### Key Research Areas
+1. **Model Structure Requirements**
+   - Understanding the expected organization of model files
+   - Verifying correct file paths and relationships between model components
+   - Identifying any specific file naming conventions or dependencies
+
+2. **Configuration Schema Analysis**
+   - Deep dive into Sherpa-onnx's configuration object structure
+   - Understanding required vs optional parameters
+   - Investigating parameter types and acceptable values
+   - Examining the relationship between different configuration options
+
+3. **Initialization Process**
+   - Understanding the sequence of initialization steps
+   - Identifying potential validation checks performed by Sherpa-onnx
+   - Understanding error handling and configuration validation
+
+4. **Integration Patterns**
+   - Studying recommended integration approaches
+   - Understanding best practices for Node.js addon usage
+   - Examining memory management and resource handling
+
+### Research Sources
+- Official Sherpa-onnx documentation
+- Node.js addon examples and documentation
+- Implementation examples and reference code
+- Community discussions and issue trackers
+
+### Expected Outcomes
+1. Clear understanding of correct configuration structure
+2. Documented model file organization requirements
+3. Proper initialization sequence
+4. Error handling strategy
+5. Updated type definitions reflecting actual requirements
+
+This research phase is critical for resolving our current initialization issues and ensuring robust integration of Sherpa-onnx into our extension. The findings will directly inform necessary modifications to our configuration approach and type definitions.
+
+This context will be used to analyze Sherpa-onnx documentation and determine the correct configuration structure for both STT and TTS initialization.

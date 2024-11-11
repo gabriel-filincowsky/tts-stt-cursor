@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as sherpa from 'sherpa-onnx-node';
-import { ModelManager } from './model-manager';
+console.log('Sherpa module structure:', Object.keys(sherpa));
+import { ModelManager, ModelInfo } from './model-manager';
+import * as fs from 'fs/promises';
+import * as fsSync from 'fs';
 
 // Define message types for type safety
 interface STTMessage {
@@ -25,8 +28,8 @@ let currentPanel: vscode.WebviewPanel | undefined = undefined;
 
 interface SherpaState {
     isInitialized: boolean;
-    sttConfig?: sherpa.STTConfig;
-    ttsConfig?: sherpa.TTSConfig;
+    recognizer?: sherpa.OnlineRecognizer;
+    synthesizer?: sherpa.OfflineTts;
 }
 
 const sherpaState: SherpaState = {
@@ -38,21 +41,22 @@ interface GPUInfo {
     deviceId: number;
 }
 
-async function checkGPUAvailability(): Promise<GPUInfo> {
-    try {
-        // Try to initialize with GPU (device 0)
-        await sherpa.init({ deviceId: 0 });
-        return { isAvailable: true, deviceId: 0 };
-    } catch (error) {
-        try {
-            // If first GPU failed, try device 1 (some systems have multiple GPUs)
-            await sherpa.init({ deviceId: 1 });
-            return { isAvailable: true, deviceId: 1 };
-        } catch (error) {
-            // If both GPU attempts failed, fall back to CPU
-            await sherpa.init({ deviceId: -1 });
-            return { isAvailable: false, deviceId: -1 };
-        }
+async function getModelPaths(modelInfo: ModelInfo, type: 'stt' | 'tts'): Promise<{[key: string]: string}> {
+    const modelDir = modelInfo.extractedPath;
+    
+    if (type === 'stt') {
+        return {
+            encoder_param: path.join(modelDir, 'encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
+            decoder_param: path.join(modelDir, 'decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
+            joiner_param: path.join(modelDir, 'joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
+            tokens: path.join(modelDir, 'tokens.txt')
+        };
+    } else {
+        return {
+            model: path.join(modelDir, 'en_US-amy-low.onnx'),
+            modelConfig: path.join(modelDir, 'en_US-amy-low.onnx.json'),
+            tokens: path.join(modelDir, 'tokens.txt')
+        };
     }
 }
 
@@ -61,11 +65,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
     // Initialize ModelManager
     const modelManager = new ModelManager(context);
-    const initialized = await modelManager.initialize();
-    
-    if (!initialized) {
-        throw new Error('Failed to initialize models');
-    }
 
     let sttCommand = vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
         createWebviewPanel(context, 'STT', modelManager);
@@ -75,11 +74,7 @@ export async function activate(context: vscode.ExtensionContext) {
         createWebviewPanel(context, 'TTS', modelManager);
     });
 
-    let selectVoiceCommand = vscode.commands.registerCommand('tts-stt-cursor.selectVoice', async () => {
-        await modelManager.selectTTSModel();
-    });
-
-    context.subscriptions.push(sttCommand, ttsCommand, selectVoiceCommand);
+    context.subscriptions.push(sttCommand, ttsCommand);
 }
 
 function createWebviewPanel(
@@ -146,6 +141,28 @@ function createWebviewPanel(
                     case 'error':
                         vscode.window.showErrorMessage(message.text);
                         break;
+                    case 'requestMicrophoneAccess':
+                        try {
+                            const stream = await requestMicrophoneAccess();
+                            if (stream) {
+                                currentPanel?.webview.postMessage({ 
+                                    command: 'microphoneAccessGranted',
+                                    streamId: stream.id
+                                });
+                            } else {
+                                currentPanel?.webview.postMessage({ 
+                                    command: 'microphoneAccessDenied',
+                                    reason: 'Failed to access microphone'
+                                });
+                            }
+                        } catch (error) {
+                            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                            currentPanel?.webview.postMessage({ 
+                                command: 'microphoneAccessDenied',
+                                reason: errorMessage
+                            });
+                        }
+                        break;
                 }
             } catch (error: unknown) {
                 const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
@@ -165,46 +182,36 @@ function createWebviewPanel(
 function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
     const nonce = getNonce();
 
-    // Get local paths for scripts and styles
+    // Get URIs for script and style
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'src', 'webview', 'script.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'src', 'webview', 'style.css'));
-
-    // Set up CSP
-    const csp = [
-        `default-src 'none'`,
-        `script-src 'nonce-${nonce}' 'unsafe-eval'`, // unsafe-eval needed for AudioContext
-        `style-src ${webview.cspSource} 'unsafe-inline'`,
-        `img-src ${webview.cspSource} https:`,
-        `media-src mediastream:`, // Allow microphone access
-        `connect-src 'none'` // Prevent any external connections
-    ].join('; ');
 
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="${csp}">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; 
+            media-device 'self';
+            media-src 'self' mediastream:;
+            script-src 'nonce-${nonce}' ${webview.cspSource}; 
+            style-src ${webview.cspSource} 'unsafe-inline';">
         <title>TTS-STT for Cursor</title>
         <link href="${styleUri}" rel="stylesheet">
     </head>
     <body>
         <div class="container">
-            <div class="privacy-notice">
-                🔒 All processing is done locally. No data leaves your computer.
-            </div>
+            <div id="status" class="status"></div>
             <div class="button-container">
-                <button id="start-stt" title="Requires microphone permission">
+                <button id="start-stt" class="button">
                     🎤 Start Recording
                 </button>
-                <button id="start-tts">
+                <button id="start-tts" class="button">
                     🔊 Start TTS
                 </button>
             </div>
-            <div id="status" class="status"></div>
             <div id="permission-error" class="error-message" style="display: none;">
-                ⚠️ Microphone access is required for speech recognition.
-                Please allow microphone access in your browser settings.
+                ⚠️ Microphone access is required. Please allow access when prompted.
             </div>
         </div>
         <script nonce="${nonce}" src="${scriptUri}"></script>
@@ -213,35 +220,40 @@ function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Web
 }
 
 async function handleSTT(audioData: ArrayBuffer): Promise<string> {
-    if (!sherpaState.isInitialized || !sherpaState.sttConfig) {
-        throw new Error('Sherpa-onnx not initialized');
+    if (!sherpaState.isInitialized || !sherpaState.recognizer) {
+        throw new Error('Speech recognition not initialized');
     }
 
     try {
-        // Convert ArrayBuffer to Buffer for Sherpa-onnx
-        const audioBuffer = Buffer.from(audioData);
-        
-        // Process audio with Sherpa-onnx
-        const transcription = await sherpa.transcribe(sherpaState.sttConfig, audioBuffer);
-        
+        // Convert Buffer to Float32Array
+        const buffer = Buffer.from(audioData);
+        const float32Array = new Float32Array(buffer.length / 2);
+        for (let i = 0; i < buffer.length; i += 2) {
+            float32Array[i / 2] = buffer.readInt16LE(i) / 32768.0;
+        }
+
+        // Process audio
+        sherpaState.recognizer.acceptWaveform(float32Array);
+        sherpaState.recognizer.decode();
+        const result = sherpaState.recognizer.getResult();
+        sherpaState.recognizer.reset();
+
         // Get the active text editor
         const editor = vscode.window.activeTextEditor;
         
         if (editor) {
-            // Insert the transcription at the current cursor position
-            editor.edit(editBuilder => {
+            await editor.edit(editBuilder => {
                 if (editor.selection.isEmpty) {
-                    editBuilder.insert(editor.selection.active, transcription);
+                    editBuilder.insert(editor.selection.active, result);
                 } else {
-                    editBuilder.replace(editor.selection, transcription);
+                    editBuilder.replace(editor.selection, result);
                 }
             });
         } else {
-            // If no editor is active, show the transcription in a message
-            vscode.window.showInformationMessage(`Transcription: ${transcription}`);
+            vscode.window.showInformationMessage(`Transcription: ${result}`);
         }
 
-        return transcription;
+        return result;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during transcription';
         throw new Error(`STT processing failed: ${errorMessage}`);
@@ -249,15 +261,24 @@ async function handleSTT(audioData: ArrayBuffer): Promise<string> {
 }
 
 async function handleTTS(text: string): Promise<ArrayBuffer> {
-    if (!sherpaState.isInitialized || !sherpaState.ttsConfig) {
-        throw new Error('Sherpa-onnx not initialized');
+    if (!sherpaState.isInitialized || !sherpaState.synthesizer) {
+        throw new Error('Speech synthesis not initialized');
     }
 
     try {
-        // Process text with Sherpa-onnx TTS
-        const audioBuffer = await sherpa.synthesize(sherpaState.ttsConfig, text);
-        return audioBuffer;
+        console.log('Starting TTS for text:', text);
+        const result = sherpaState.synthesizer.generate(text);
+        console.log('TTS generation complete, sample rate:', result.sampleRate);
+        
+        // Convert Float32Array to ArrayBuffer for web audio
+        const buffer = new ArrayBuffer(result.samples.length * 4);
+        const view = new Float32Array(buffer);
+        view.set(result.samples);
+        
+        console.log('Audio buffer created, length:', buffer.byteLength);
+        return buffer;
     } catch (error: unknown) {
+        console.error('TTS error:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during synthesis';
         throw new Error(`TTS processing failed: ${errorMessage}`);
     }
@@ -272,6 +293,125 @@ function getNonce() {
     return text;
 }
 
+function validateConfig(config: any, type: 'STT' | 'TTS'): void {
+    console.log(`\n=== Validating ${type} Configuration ===`);
+    
+    // Log all configuration properties
+    console.log('Configuration properties:');
+    for (const [key, value] of Object.entries(config)) {
+        console.log(`  ${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+    }
+
+    // Verify file existence for paths
+    console.log('\nVerifying file paths:');
+    const pathProperties = type === 'STT' 
+        ? ['encoder_param', 'decoder_param', 'joiner_param', 'tokens']
+        : ['model', 'tokens'];
+
+    for (const prop of pathProperties) {
+        if (prop in config) {
+            const exists = fsSync.existsSync(config[prop]);
+            console.log(`  ${prop}: ${exists ? 'EXISTS' : 'MISSING'} (${config[prop]})`);
+        } else {
+            console.log(`  ${prop}: MISSING FROM CONFIG`);
+        }
+    }
+
+    // Type-specific validation
+    if (type === 'STT') {
+        console.log('\nValidating STT-specific properties:');
+        console.log(`  sample_rate: ${config.sample_rate} (should be 16000)`);
+        console.log(`  feature_dim: ${config.feature_dim} (should be 80)`);
+        console.log(`  enable_endpoint_detection: ${config.enable_endpoint_detection}`);
+    } else {
+        console.log('\nValidating TTS-specific properties:');
+        console.log(`  noise_scale: ${config.noise_scale}`);
+        console.log(`  length_scale: ${config.length_scale}`);
+    }
+}
+
+async function verifyModelFiles(modelDir: string, type: 'STT' | 'TTS'): Promise<boolean> {
+    try {
+        console.log(`\nVerifying ${type} model files in: ${modelDir}`);
+        
+        // Check if directory exists
+        const dirExists = fsSync.existsSync(modelDir);
+        console.log(`Directory exists: ${dirExists}`);
+        
+        if (!dirExists) {
+            return false;
+        }
+
+        // List all files recursively
+        function listFiles(dir: string): string[] {
+            const files = fsSync.readdirSync(dir);
+            let result: string[] = [];
+            
+            for (const file of files) {
+                const fullPath = path.join(dir, file);
+                const stat = fsSync.statSync(fullPath);
+                
+                if (stat.isDirectory()) {
+                    result = result.concat(listFiles(fullPath));
+                } else {
+                    result.push(fullPath);
+                }
+            }
+            
+            return result;
+        }
+
+        const files = listFiles(modelDir);
+        console.log('Found files:', files);
+
+        // Check specific required files
+        if (type === 'STT') {
+            const required = [
+                'encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
+                'decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
+                'joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
+                'tokens.txt'
+            ];
+            
+            for (const file of required) {
+                const exists = files.some(f => f.endsWith(file));
+                console.log(`Required file ${file}: ${exists ? 'Found' : 'Missing'}`);
+                if (!exists) return false;
+            }
+        } else {
+            const required = [
+                'en_US-amy-low.onnx',
+                'tokens.txt'
+            ];
+            
+            for (const file of required) {
+                const exists = files.some(f => f.endsWith(file));
+                console.log(`Required file ${file}: ${exists ? 'Found' : 'Missing'}`);
+                if (!exists) return false;
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error(`Error verifying ${type} model files:`, error);
+        return false;
+    }
+}
+
+// Helper function to safely stringify configs
+function safeStringify(obj: any): string {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+        if (typeof value === 'object' && value !== null) {
+            if (seen.has(value)) {
+                return '[Circular]';
+            }
+            seen.add(value);
+        }
+        return value;
+    }, 2);
+}
+
 async function initializeSherpa(
     context: vscode.ExtensionContext,
     modelManager: ModelManager
@@ -281,36 +421,128 @@ async function initializeSherpa(
     }
 
     try {
-        await sherpa.init();
+        console.log('\n=== Starting Sherpa Initialization ===');
+        
+        // Log available Sherpa exports without circular references
+        console.log('Available Sherpa exports:', Object.keys(sherpa));
+        console.log('OnlineRecognizer type:', typeof sherpa.OnlineRecognizer);
+        console.log('OfflineTts type:', typeof sherpa.OfflineTts);
 
-        // Get current models
-        const sttModel = await modelManager.getCurrentSTTModel();
-        const ttsModel = await modelManager.getCurrentTTSModel();
-
-        if (!sttModel || !ttsModel) {
-            throw new Error('Required models not found');
+        // Initialize models
+        const initialized = await modelManager.initialize();
+        if (!initialized) {
+            throw new Error('Failed to initialize models');
         }
 
-        // Configure STT
-        sherpaState.sttConfig = {
-            modelPath: path.dirname(sttModel.path),
-            deviceId: -1, // CPU
-            sampleRate: 16000,
-            channels: 1
+        // Get current models
+        const sttModel = await modelManager.getCurrentModel('stt');
+        const ttsModel = await modelManager.getCurrentModel('tts');
+
+        if (!sttModel || !ttsModel) {
+            throw new Error('Required models not found. Please check the models directory.');
+        }
+
+        // Verify model files
+        const sttVerified = await modelManager.verifyModelFiles(sttModel);
+        const ttsVerified = await modelManager.verifyModelFiles(ttsModel);
+
+        if (!sttVerified || !ttsVerified) {
+            throw new Error('Model files verification failed');
+        }
+
+        // Get model paths
+        const sttPaths = await getModelPaths(sttModel, 'stt');
+        const ttsPaths = await getModelPaths(ttsModel, 'tts');
+
+        // Initialize STT with correct config structure
+        const sttConfig: sherpa.OnlineRecognizerConfig = {
+            transducer: {
+                encoder: sttPaths.encoder_param,
+                decoder: sttPaths.decoder_param,
+                joiner: sttPaths.joiner_param,
+            },
+            tokens: sttPaths.tokens,
+            modelConfig: '',
+            featConfig: {
+                sampleRate: 16000,
+                featureDim: 80
+            },
+            decodingConfig: {
+                method: "greedy_search" as const
+            },
+            enableEndpoint: true,
+            rule1MinTrailingSilence: 1.0,
+            decoderConfig: {},
+            hotwordsFile: '',
+            hotwordsScore: 1.0
         };
 
-        // Configure TTS
-        sherpaState.ttsConfig = {
-            modelPath: path.dirname(ttsModel.path),
-            deviceId: -1, // CPU
-            speakerId: 0,
-            speed: 1.0
+        // Initialize TTS with correct config
+        const ttsConfig = {
+            model: ttsPaths.model,
+            modelConfig: ttsPaths.modelConfig,  // Add the config file path
+            tokens: ttsPaths.tokens,
+            numThreads: 1,
+            debug: true
         };
+
+        console.log('\n=== Configuration ===');
+        console.log('STT Config:', safeStringify(sttConfig));
+        console.log('TTS Config:', safeStringify(ttsConfig));
+
+        // Create instances
+        console.log('\n=== Creating Instances ===');
+        console.log('Creating OnlineRecognizer...');
+        sherpaState.recognizer = new sherpa.OnlineRecognizer(sttConfig);
+        console.log('OnlineRecognizer created successfully');
+
+        console.log('Creating OfflineTts...');
+        sherpaState.synthesizer = new sherpa.OfflineTts(ttsConfig);
+        console.log('OfflineTts created successfully');
 
         sherpaState.isInitialized = true;
-    } catch (error: unknown) {
+        vscode.window.showInformationMessage('Speech processing initialized successfully');
+    } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to initialize Sherpa-onnx';
+        console.error('Sherpa initialization error:', {
+            message: errorMessage,
+            stack: error instanceof Error ? error.stack : 'No stack trace'
+        });
         throw new Error(`Sherpa initialization failed: ${errorMessage}`);
+    }
+}
+
+async function requestMicrophoneAccess(): Promise<MediaStream | undefined> {
+    try {
+        // Request permission through VS Code's API
+        const result = await vscode.window.showInformationMessage(
+            'This extension requires microphone access for speech recognition. Allow access?',
+            'Allow',
+            'Deny'
+        );
+
+        if (result !== 'Allow') {
+            throw new Error('Microphone access denied by user');
+        }
+
+        // Use the standard Web Audio API
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                channelCount: 1,
+                sampleRate: 16000,
+                echoCancellation: true,
+                noiseSuppression: true
+            }
+        });
+
+        return stream;
+    } catch (error) {
+        if (error instanceof Error) {
+            vscode.window.showErrorMessage(`Microphone access error: ${error.message}`);
+        } else {
+            vscode.window.showErrorMessage('Failed to access microphone');
+        }
+        return undefined;
     }
 }
 

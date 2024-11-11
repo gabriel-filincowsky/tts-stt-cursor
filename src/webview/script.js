@@ -52,48 +52,15 @@
 
     async function startSTT() {
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            isRecording = true;
-            sttButton.textContent = '⏹️ Stop Recording';
-            sttButton.classList.add('recording');
-            statusElement.textContent = 'Recording...';
-
-            mediaRecorder = new MediaRecorder(stream);
-            audioChunks = [];
-
-            mediaRecorder.ondataavailable = event => {
-                audioChunks.push(event.data);
-            };
-
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    vscode.postMessage({
-                        command: 'startSTT',
-                        audioData: reader.result
-                    });
-                    statusElement.textContent = 'Processing speech...';
-                };
-                reader.readAsArrayBuffer(audioBlob);
-            };
-
-            mediaRecorder.start();
-        } catch (error) {
-            console.error('Error accessing microphone:', error);
-            
-            if (error.name === 'NotAllowedError') {
-                permissionErrorElement.style.display = 'block';
-                vscode.postMessage({
-                    command: 'error',
-                    text: 'Microphone access denied. Please allow microphone access in your browser settings.'
-                });
+            if (!isRecording) {
+                statusElement.textContent = 'Requesting microphone access...';
+                vscode.postMessage({ command: 'requestMicrophoneAccess' });
             } else {
-                vscode.postMessage({
-                    command: 'error',
-                    text: `Failed to access microphone: ${error.message}`
-                });
+                stopSTT();
             }
+        } catch (error) {
+            console.error('Error starting STT:', error);
+            statusElement.textContent = 'Error: Failed to start recording';
         }
     }
 
@@ -120,6 +87,30 @@
     window.addEventListener('message', event => {
         const message = event.data;
         switch (message.command) {
+            case 'microphoneAccessGranted':
+                navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        channelCount: 1,
+                        sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    }
+                })
+                .then(stream => {
+                    handleRecordingStart(stream);
+                })
+                .catch(error => {
+                    console.error('Error accessing microphone stream:', error);
+                    statusElement.textContent = 'Error: Failed to access microphone';
+                });
+                break;
+
+            case 'microphoneAccessDenied':
+                console.error('Microphone access denied:', message.reason);
+                statusElement.textContent = `Error: ${message.reason}`;
+                permissionErrorElement.style.display = 'block';
+                break;
+
             case 'transcriptionResult':
                 statusElement.textContent = 'Transcription complete';
                 setTimeout(() => {
@@ -155,6 +146,35 @@
         return new Promise((resolve) => {
             source.onended = resolve;
         });
+    }
+
+    function handleRecordingStart(stream) {
+        isRecording = true;
+        sttButton.textContent = '⏹️ Stop Recording';
+        sttButton.classList.add('recording');
+        statusElement.textContent = 'Recording...';
+
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                vscode.postMessage({
+                    command: 'startSTT',
+                    audioData: reader.result
+                });
+                statusElement.textContent = 'Processing speech...';
+            };
+            reader.readAsArrayBuffer(audioBlob);
+        };
+
+        mediaRecorder.start();
     }
 })();
 
