@@ -61,4 +61,28 @@ button:active {
     gap: 16px;
     justify-content: center;
     margin-bottom: 20px;
+}
+
+.privacy-notice {
+    background-color: var(--vscode-textBlockQuote-background);
+    border-left: 3px solid var(--vscode-textBlockQuote-border);
+    padding: 10px;
+    margin-bottom: 20px;
+    font-size: 0.9em;
+    color: var(--vscode-textBlockQuote-foreground);
+}
+
+.error-message {
+    color: var(--vscode-errorForeground);
+    background-color: var(--vscode-inputValidation-errorBackground);
+    border: 1px solid var(--vscode-inputValidation-errorBorder);
+    padding: 10px;
+    margin-top: 10px;
+    border-radius: 3px;
+    display: none;
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 } 

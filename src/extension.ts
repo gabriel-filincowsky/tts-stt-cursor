@@ -98,7 +98,11 @@ function createWebviewPanel(
         vscode.ViewColumn.One,
         {
             enableScripts: true,
-            retainContextWhenHidden: true
+            retainContextWhenHidden: true,
+            localResourceRoots: [
+                vscode.Uri.joinPath(context.extensionUri, 'src', 'webview'),
+                vscode.Uri.joinPath(context.extensionUri, 'media')
+            ]
         }
     );
 
@@ -159,27 +163,50 @@ function createWebviewPanel(
 }
 
 function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
-    // Generate a nonce to whitelist specific inline scripts
     const nonce = getNonce();
 
-    // Get paths to webview files
+    // Get local paths for scripts and styles
     const scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'src', 'webview', 'script.js'));
     const styleUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'src', 'webview', 'style.css'));
+
+    // Set up CSP
+    const csp = [
+        `default-src 'none'`,
+        `script-src 'nonce-${nonce}' 'unsafe-eval'`, // unsafe-eval needed for AudioContext
+        `style-src ${webview.cspSource} 'unsafe-inline'`,
+        `img-src ${webview.cspSource} https:`,
+        `media-src mediastream:`, // Allow microphone access
+        `connect-src 'none'` // Prevent any external connections
+    ].join('; ');
 
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; 
-            script-src 'nonce-${nonce}' ${webview.cspSource}; 
-            style-src ${webview.cspSource} 'unsafe-inline';">
-        <link href="${styleUri}" rel="stylesheet">
+        <meta http-equiv="Content-Security-Policy" content="${csp}">
         <title>TTS-STT for Cursor</title>
+        <link href="${styleUri}" rel="stylesheet">
     </head>
     <body>
-        <button id="start-stt">🎤 Start STT</button>
-        <button id="start-tts">🔊 Start TTS</button>
+        <div class="container">
+            <div class="privacy-notice">
+                🔒 All processing is done locally. No data leaves your computer.
+            </div>
+            <div class="button-container">
+                <button id="start-stt" title="Requires microphone permission">
+                    🎤 Start Recording
+                </button>
+                <button id="start-tts">
+                    🔊 Start TTS
+                </button>
+            </div>
+            <div id="status" class="status"></div>
+            <div id="permission-error" class="error-message" style="display: none;">
+                ⚠️ Microphone access is required for speech recognition.
+                Please allow microphone access in your browser settings.
+            </div>
+        </div>
         <script nonce="${nonce}" src="${scriptUri}"></script>
     </body>
     </html>`;

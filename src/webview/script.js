@@ -4,12 +4,42 @@
     let audioChunks = [];
     let isRecording = false;
 
-    // UI Elements
+    // Initialize UI elements
     const sttButton = document.getElementById('start-stt');
     const ttsButton = document.getElementById('start-tts');
-    const statusElement = document.createElement('div');
-    statusElement.className = 'status';
-    document.body.appendChild(statusElement);
+    const statusElement = document.getElementById('status');
+    const permissionErrorElement = document.getElementById('permission-error');
+
+    // Check initial microphone permission state
+    navigator.permissions.query({ name: 'microphone' })
+        .then(permissionStatus => {
+            handlePermissionChange(permissionStatus.state);
+            
+            // Listen for permission changes
+            permissionStatus.onchange = () => {
+                handlePermissionChange(permissionStatus.state);
+            };
+        })
+        .catch(error => {
+            console.error('Error checking microphone permission:', error);
+        });
+
+    function handlePermissionChange(state) {
+        switch (state) {
+            case 'granted':
+                permissionErrorElement.style.display = 'none';
+                sttButton.disabled = false;
+                break;
+            case 'denied':
+                permissionErrorElement.style.display = 'block';
+                sttButton.disabled = true;
+                break;
+            case 'prompt':
+                permissionErrorElement.style.display = 'none';
+                sttButton.disabled = false;
+                break;
+        }
+    }
 
     // STT Functionality
     sttButton.addEventListener('click', () => {
@@ -20,44 +50,51 @@
         }
     });
 
-    function startSTT() {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(stream => {
-                isRecording = true;
-                sttButton.textContent = '⏹️ Stop Recording';
-                sttButton.classList.add('recording');
-                statusElement.textContent = 'Recording...';
+    async function startSTT() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            isRecording = true;
+            sttButton.textContent = '⏹️ Stop Recording';
+            sttButton.classList.add('recording');
+            statusElement.textContent = 'Recording...';
 
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
 
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
+            mediaRecorder.ondataavailable = event => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const reader = new FileReader();
+                reader.onloadend = () => {
+                    vscode.postMessage({
+                        command: 'startSTT',
+                        audioData: reader.result
+                    });
+                    statusElement.textContent = 'Processing speech...';
                 };
+                reader.readAsArrayBuffer(audioBlob);
+            };
 
-                mediaRecorder.onstop = () => {
-                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                    const reader = new FileReader();
-                    reader.onloadend = () => {
-                        vscode.postMessage({
-                            command: 'startSTT',
-                            audioData: reader.result
-                        });
-                        statusElement.textContent = 'Processing speech...';
-                    };
-                    reader.readAsArrayBuffer(audioBlob);
-                };
-
-                mediaRecorder.start();
-            })
-            .catch(err => {
-                console.error('Error accessing microphone:', err);
+            mediaRecorder.start();
+        } catch (error) {
+            console.error('Error accessing microphone:', error);
+            
+            if (error.name === 'NotAllowedError') {
+                permissionErrorElement.style.display = 'block';
                 vscode.postMessage({
                     command: 'error',
-                    text: 'Failed to access microphone: ' + err.message
+                    text: 'Microphone access denied. Please allow microphone access in your browser settings.'
                 });
-                statusElement.textContent = 'Error: Failed to access microphone';
-            });
+            } else {
+                vscode.postMessage({
+                    command: 'error',
+                    text: `Failed to access microphone: ${error.message}`
+                });
+            }
+        }
     }
 
     function stopSTT() {
