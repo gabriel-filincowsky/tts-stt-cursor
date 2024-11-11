@@ -1,0 +1,14 @@
+.container {
+    padding: 20px;
+    font-family: var(--vscode-font-family);
+    color: var(--vscode-foreground);
+}
+
+h1 {
+    font-size: 1.2em;
+    margin-bottom: 20px;
+}
+
+#controls {
+    margin-top: 20px;
+} 

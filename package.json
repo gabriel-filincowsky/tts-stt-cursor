@@ -1,0 +1,46 @@
+{
+  "name": "tts-stt-cursor",
+  "displayName": "TTS-STT for Cursor",
+  "description": "Speech-to-text and text-to-speech functionality for Cursor IDE using Sherpa-onnx",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:tts-stt-cursor.startSTT",
+    "onCommand:tts-stt-cursor.startTTS"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tts-stt-cursor.startSTT",
+        "title": "Start Speech-to-Text"
+      },
+      {
+        "command": "tts-stt-cursor.startTTS",
+        "title": "Start Text-to-Speech"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^16.18.119",
+    "@types/vscode": "^1.95.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.1",
+    "typescript": "^5.6.3"
+  },
+  "private": true
+}

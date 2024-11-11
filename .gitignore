@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Compiled output
+out/
+dist/
+
+# VS Code specific files
+.vscode/
+*.vsix
+
+# Environment files
+.env
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
