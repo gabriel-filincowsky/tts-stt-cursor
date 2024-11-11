@@ -33,6 +33,9 @@ declare module 'sherpa-onnx-node' {
         tokens: string;
         numThreads?: number;
         debug?: boolean;
+        noiseScale?: number;
+        lengthScale?: number;
+        noiseW?: number;
     }
 
     export class OnlineRecognizer {

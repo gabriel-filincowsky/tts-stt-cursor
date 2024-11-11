@@ -1,7 +1,14 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as sherpa from 'sherpa-onnx-node';
-console.log('Sherpa module structure:', Object.keys(sherpa));
+import { inspect } from 'util';
+
+// Define and initialize the output channel
+const outputChannel = vscode.window.createOutputChannel('TTS-STT Logs');
+
+// Initialize APPENDLINE early to capture logs from ModelManager initialization
+outputChannel.show(true); // Automatically show the output channel
+
 import { ModelManager, ModelInfo } from './model-manager';
 import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
@@ -61,20 +68,39 @@ async function getModelPaths(modelInfo: ModelInfo, type: 'stt' | 'tts'): Promise
 }
 
 export async function activate(context: vscode.ExtensionContext) {
-    console.log('Extension "TTS-STT for Cursor" is now active.');
+    outputChannel.appendLine('Extension "TTS-STT for Cursor" is now active.');
 
-    // Initialize ModelManager
-    const modelManager = new ModelManager(context);
+    // Initialize ModelManager with logger
+    const modelManager = new ModelManager(context, outputChannel.appendLine.bind(outputChannel));
 
-    let sttCommand = vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
-        createWebviewPanel(context, 'STT', modelManager);
-    });
+    // Initialize Sherpa first
+    try {
+        await initializeSherpa(context, modelManager);
+    } catch (error) {
+        outputChannel.appendLine(`Failed to initialize Sherpa: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        // Continue with command registration even if Sherpa fails
+    }
 
-    let ttsCommand = vscode.commands.registerCommand('tts-stt-cursor.startTTS', () => {
-        createWebviewPanel(context, 'TTS', modelManager);
-    });
+    // Register commands
+    const commands = [
+        vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
+            createWebviewPanel(context, 'STT', modelManager);
+        }),
+        vscode.commands.registerCommand('tts-stt-cursor.startTTS', () => {
+            createWebviewPanel(context, 'TTS', modelManager);
+        }),
+        vscode.commands.registerCommand('tts-stt-cursor.testTTS', async () => {
+            try {
+                await testTTSConfig(context);
+                vscode.window.showInformationMessage('TTS test completed successfully');
+            } catch (error) {
+                const message = error instanceof Error ? error.message : 'Unknown error';
+                vscode.window.showErrorMessage(`TTS test failed: ${message}`);
+            }
+        })
+    ];
 
-    context.subscriptions.push(sttCommand, ttsCommand);
+    context.subscriptions.push(...commands);
 }
 
 function createWebviewPanel(
@@ -172,11 +198,6 @@ function createWebviewPanel(
         undefined,
         context.subscriptions
     );
-
-    // Initialize Sherpa-onnx
-    initializeSherpa(context, modelManager).catch(error => {
-        vscode.window.showErrorMessage(error.message);
-    });
 }
 
 function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
@@ -266,19 +287,19 @@ async function handleTTS(text: string): Promise<ArrayBuffer> {
     }
 
     try {
-        console.log('Starting TTS for text:', text);
+        outputChannel.appendLine(`Starting TTS for text: ${text}`);
         const result = sherpaState.synthesizer.generate(text);
-        console.log('TTS generation complete, sample rate:', result.sampleRate);
+        outputChannel.appendLine(`TTS generation complete, sample rate: ${result.sampleRate}`);
         
         // Convert Float32Array to ArrayBuffer for web audio
         const buffer = new ArrayBuffer(result.samples.length * 4);
         const view = new Float32Array(buffer);
         view.set(result.samples);
         
-        console.log('Audio buffer created, length:', buffer.byteLength);
+        outputChannel.appendLine(`Audio buffer created, length: ${buffer.byteLength}`);
         return buffer;
     } catch (error: unknown) {
-        console.error('TTS error:', error);
+        outputChannel.appendLine(`TTS error: ${error instanceof Error ? error.message : 'Unknown error'}`);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during synthesis';
         throw new Error(`TTS processing failed: ${errorMessage}`);
     }
@@ -294,122 +315,72 @@ function getNonce() {
 }
 
 function validateConfig(config: any, type: 'STT' | 'TTS'): void {
-    console.log(`\n=== Validating ${type} Configuration ===`);
+    outputChannel.appendLine(`\n=== Validating ${type} Configuration ===`);
     
     // Log all configuration properties
-    console.log('Configuration properties:');
+    outputChannel.appendLine('Configuration properties:');
     for (const [key, value] of Object.entries(config)) {
-        console.log(`  ${key}: ${typeof value === 'string' ? value : JSON.stringify(value)}`);
+        outputChannel.appendLine(`  ${key}: ${typeof value === 'string' ? value : inspect(value, { depth: 2 })}`);
     }
 
     // Verify file existence for paths
-    console.log('\nVerifying file paths:');
+    outputChannel.appendLine('\nVerifying file paths:');
     const pathProperties = type === 'STT' 
         ? ['encoder_param', 'decoder_param', 'joiner_param', 'tokens']
-        : ['model', 'tokens'];
+        : ['model', 'modelConfig', 'tokens'];
 
     for (const prop of pathProperties) {
         if (prop in config) {
             const exists = fsSync.existsSync(config[prop]);
-            console.log(`  ${prop}: ${exists ? 'EXISTS' : 'MISSING'} (${config[prop]})`);
+            outputChannel.appendLine(`  ${prop}: ${exists ? 'EXISTS' : 'MISSING'} (${config[prop]})`);
+            if (!exists) {
+                outputChannel.appendLine(`    ⚠️ WARNING: Required file ${prop} not found!`);
+            }
         } else {
-            console.log(`  ${prop}: MISSING FROM CONFIG`);
+            outputChannel.appendLine(`  ${prop}: MISSING FROM CONFIG`);
+            outputChannel.appendLine(`    ❌ ERROR: Required property ${prop} not defined in config!`);
         }
     }
 
     // Type-specific validation
     if (type === 'STT') {
-        console.log('\nValidating STT-specific properties:');
-        console.log(`  sample_rate: ${config.sample_rate} (should be 16000)`);
-        console.log(`  feature_dim: ${config.feature_dim} (should be 80)`);
-        console.log(`  enable_endpoint_detection: ${config.enable_endpoint_detection}`);
+        outputChannel.appendLine('\nValidating STT-specific properties:');
+        outputChannel.appendLine(`  sample_rate: ${config.featConfig.sampleRate} (should be 16000)`);
+        outputChannel.appendLine(`  feature_dim: ${config.featConfig.featureDim} (should be 80)`);
+        outputChannel.appendLine(`  enable_endpoint_detection: ${config.enableEndpoint}`);
     } else {
-        console.log('\nValidating TTS-specific properties:');
-        console.log(`  noise_scale: ${config.noise_scale}`);
-        console.log(`  length_scale: ${config.length_scale}`);
+        outputChannel.appendLine('\nValidating TTS-specific properties:');
+        // Enhanced TTS-specific validations
+        try {
+            outputChannel.appendLine(`  model: ${config.model}`);
+            const modelExists = fsSync.existsSync(config.model);
+            outputChannel.appendLine(`    Status: ${modelExists ? '✅ Found' : '❌ Missing'}`);
+
+            outputChannel.appendLine(`  modelConfig: ${config.modelConfig}`);
+            const configExists = fsSync.existsSync(config.modelConfig);
+            outputChannel.appendLine(`    Status: ${configExists ? '✅ Found' : '❌ Missing'}`);
+            
+            if (configExists) {
+                const configContent = fsSync.readFileSync(config.modelConfig, 'utf8');
+                outputChannel.appendLine(`    Content: ${inspect(JSON.parse(configContent), { depth: 2 })}`);
+            }
+
+            outputChannel.appendLine(`  tokens: ${config.tokens}`);
+            const tokensExist = fsSync.existsSync(config.tokens);
+            outputChannel.appendLine(`    Status: ${tokensExist ? '✅ Found' : '❌ Missing'}`);
+
+            outputChannel.appendLine(`  numThreads: ${config.numThreads}`);
+            if (config.numThreads < 1) {
+                outputChannel.appendLine(`    ⚠️ WARNING: numThreads should be greater than 0`);
+            } else {
+                outputChannel.appendLine(`    ✅ Valid thread count`);
+            }
+
+            outputChannel.appendLine(`  debug: ${config.debug}`);
+        } catch (error) {
+            outputChannel.appendLine(`  ❌ Error during TTS validation: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
     }
-}
-
-async function verifyModelFiles(modelDir: string, type: 'STT' | 'TTS'): Promise<boolean> {
-    try {
-        console.log(`\nVerifying ${type} model files in: ${modelDir}`);
-        
-        // Check if directory exists
-        const dirExists = fsSync.existsSync(modelDir);
-        console.log(`Directory exists: ${dirExists}`);
-        
-        if (!dirExists) {
-            return false;
-        }
-
-        // List all files recursively
-        function listFiles(dir: string): string[] {
-            const files = fsSync.readdirSync(dir);
-            let result: string[] = [];
-            
-            for (const file of files) {
-                const fullPath = path.join(dir, file);
-                const stat = fsSync.statSync(fullPath);
-                
-                if (stat.isDirectory()) {
-                    result = result.concat(listFiles(fullPath));
-                } else {
-                    result.push(fullPath);
-                }
-            }
-            
-            return result;
-        }
-
-        const files = listFiles(modelDir);
-        console.log('Found files:', files);
-
-        // Check specific required files
-        if (type === 'STT') {
-            const required = [
-                'encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
-                'decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
-                'joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
-                'tokens.txt'
-            ];
-            
-            for (const file of required) {
-                const exists = files.some(f => f.endsWith(file));
-                console.log(`Required file ${file}: ${exists ? 'Found' : 'Missing'}`);
-                if (!exists) return false;
-            }
-        } else {
-            const required = [
-                'en_US-amy-low.onnx',
-                'tokens.txt'
-            ];
-            
-            for (const file of required) {
-                const exists = files.some(f => f.endsWith(file));
-                console.log(`Required file ${file}: ${exists ? 'Found' : 'Missing'}`);
-                if (!exists) return false;
-            }
-        }
-
-        return true;
-    } catch (error) {
-        console.error(`Error verifying ${type} model files:`, error);
-        return false;
-    }
-}
-
-// Helper function to safely stringify configs
-function safeStringify(obj: any): string {
-    const seen = new WeakSet();
-    return JSON.stringify(obj, (key, value) => {
-        if (typeof value === 'object' && value !== null) {
-            if (seen.has(value)) {
-                return '[Circular]';
-            }
-            seen.add(value);
-        }
-        return value;
-    }, 2);
 }
 
 async function initializeSherpa(
@@ -421,56 +392,74 @@ async function initializeSherpa(
     }
 
     try {
-        console.log('\n=== Starting Sherpa Initialization ===');
+        outputChannel.appendLine('\n=== Starting Sherpa Initialization ===');
         
         // Log available Sherpa exports without circular references
-        console.log('Available Sherpa exports:', Object.keys(sherpa));
-        console.log('OnlineRecognizer type:', typeof sherpa.OnlineRecognizer);
-        console.log('OfflineTts type:', typeof sherpa.OfflineTts);
+        outputChannel.appendLine(`Available Sherpa exports: ${JSON.stringify(Object.keys(sherpa))}`);
+        outputChannel.appendLine(`OnlineRecognizer type: ${typeof sherpa.OnlineRecognizer}`);
+        outputChannel.appendLine(`OfflineTts type: ${typeof sherpa.OfflineTts}`);
 
         // Initialize models
+        outputChannel.appendLine('\nInitializing models...');
         const initialized = await modelManager.initialize();
         if (!initialized) {
             throw new Error('Failed to initialize models');
         }
+        outputChannel.appendLine('Models initialized successfully.');
 
         // Get current models
+        outputChannel.appendLine('\nRetrieving current models...');
         const sttModel = await modelManager.getCurrentModel('stt');
         const ttsModel = await modelManager.getCurrentModel('tts');
 
         if (!sttModel || !ttsModel) {
             throw new Error('Required models not found. Please check the models directory.');
         }
+        outputChannel.appendLine('STT and TTS models retrieved successfully.');
 
         // Verify model files
+        outputChannel.appendLine('\nVerifying STT model files...');
         const sttVerified = await modelManager.verifyModelFiles(sttModel);
-        const ttsVerified = await modelManager.verifyModelFiles(ttsModel);
-
-        if (!sttVerified || !ttsVerified) {
-            throw new Error('Model files verification failed');
+        if (!sttVerified) {
+            throw new Error('STT model files verification failed');
         }
+        outputChannel.appendLine('STT model files verified successfully.');
+
+        outputChannel.appendLine('\nVerifying TTS model files...');
+        const ttsVerified = await modelManager.verifyModelFiles(ttsModel);
+        if (!ttsVerified) {
+            throw new Error('TTS model files verification failed');
+        }
+        outputChannel.appendLine('TTS model files verified successfully.');
 
         // Get model paths
+        outputChannel.appendLine('\nRetrieving model paths...');
         const sttPaths = await getModelPaths(sttModel, 'stt');
         const ttsPaths = await getModelPaths(ttsModel, 'tts');
+        outputChannel.appendLine('Model paths retrieved successfully.');
+
+        // Define model directories
+        const sttModelDir = sttModel.extractedPath;
+        const ttsModelDir = ttsModel.extractedPath;
 
         // Initialize STT with correct config structure
+        outputChannel.appendLine('\nConfiguring STT...');
         const sttConfig: sherpa.OnlineRecognizerConfig = {
             transducer: {
-                encoder: sttPaths.encoder_param,
-                decoder: sttPaths.decoder_param,
-                joiner: sttPaths.joiner_param,
+                encoder: path.join(sttModelDir, 'encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
+                decoder: path.join(sttModelDir, 'decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
+                joiner: path.join(sttModelDir, 'joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx'),
             },
-            tokens: sttPaths.tokens,
-            modelConfig: '',
+            tokens: path.join(sttModelDir, 'tokens.txt'),
             featConfig: {
                 sampleRate: 16000,
                 featureDim: 80
             },
             decodingConfig: {
-                method: "greedy_search" as const
+                method: "greedy_search"
             },
             enableEndpoint: true,
+            modelConfig: path.join(path.dirname(sttModelDir), 'model_config.json'),
             rule1MinTrailingSilence: 1.0,
             decoderConfig: {},
             hotwordsFile: '',
@@ -478,36 +467,40 @@ async function initializeSherpa(
         };
 
         // Initialize TTS with correct config
-        const ttsConfig = {
+        outputChannel.appendLine('Configuring TTS...');
+        const ttsConfig: sherpa.OfflineTtsConfig = {
             model: ttsPaths.model,
-            modelConfig: ttsPaths.modelConfig,  // Add the config file path
+            modelConfig: path.join(path.dirname(ttsModelDir), 'model_config.json'),
             tokens: ttsPaths.tokens,
             numThreads: 1,
-            debug: true
+            debug: true,
+            noiseScale: 0.667,  // from inference.noise_scale
+            lengthScale: 1.0,   // from inference.length_scale
+            noiseW: 0.8        // from inference.noise_w
         };
 
-        console.log('\n=== Configuration ===');
-        console.log('STT Config:', safeStringify(sttConfig));
-        console.log('TTS Config:', safeStringify(ttsConfig));
+        outputChannel.appendLine('\n=== Configuration ===');
+        outputChannel.appendLine(`STT Config: ${inspect(sttConfig, { depth: null })}`);
+        outputChannel.appendLine(`TTS Config: ${inspect(ttsConfig, { depth: null })}`);
 
         // Create instances
-        console.log('\n=== Creating Instances ===');
-        console.log('Creating OnlineRecognizer...');
-        sherpaState.recognizer = new sherpa.OnlineRecognizer(sttConfig);
-        console.log('OnlineRecognizer created successfully');
+        outputChannel.appendLine('\n=== Creating Instances ===');
 
-        console.log('Creating OfflineTts...');
+        outputChannel.appendLine('Creating OnlineRecognizer...');
+        sherpaState.recognizer = new sherpa.OnlineRecognizer(sttConfig);
+        outputChannel.appendLine('OnlineRecognizer created successfully.');
+
+        outputChannel.appendLine('Creating OfflineTts...');
         sherpaState.synthesizer = new sherpa.OfflineTts(ttsConfig);
-        console.log('OfflineTts created successfully');
+        outputChannel.appendLine('OfflineTts created successfully.');
 
         sherpaState.isInitialized = true;
         vscode.window.showInformationMessage('Speech processing initialized successfully');
+        outputChannel.appendLine('Sherpa initialization completed successfully.');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to initialize Sherpa-onnx';
-        console.error('Sherpa initialization error:', {
-            message: errorMessage,
-            stack: error instanceof Error ? error.stack : 'No stack trace'
-        });
+        outputChannel.appendLine(`Sherpa initialization error: ${errorMessage}`);
+        vscode.window.showErrorMessage(`Sherpa initialization failed: ${errorMessage}`);
         throw new Error(`Sherpa initialization failed: ${errorMessage}`);
     }
 }
@@ -538,12 +531,59 @@ async function requestMicrophoneAccess(): Promise<MediaStream | undefined> {
         return stream;
     } catch (error) {
         if (error instanceof Error) {
+            outputChannel.appendLine(`Microphone access error: ${error.message}`);
             vscode.window.showErrorMessage(`Microphone access error: ${error.message}`);
         } else {
+            outputChannel.appendLine('Failed to access microphone');
             vscode.window.showErrorMessage('Failed to access microphone');
         }
         return undefined;
     }
 }
 
-export function deactivate() {} 
+export function deactivate() {
+    outputChannel.dispose();
+}
+
+// Add near the end of the file, before deactivate()
+async function testTTSConfig(context: vscode.ExtensionContext): Promise<void> {
+    outputChannel.appendLine('\n=== Testing TTS Configuration ===');
+    try {
+        const modelManager = new ModelManager(context, outputChannel.appendLine.bind(outputChannel));
+        await modelManager.initialize();
+        
+        const ttsModel = await modelManager.getCurrentModel('tts');
+        if (!ttsModel) {
+            throw new Error('TTS model not found');
+        }
+
+        const ttsPaths = await getModelPaths(ttsModel, 'tts');
+        const ttsConfig: sherpa.OfflineTtsConfig = {
+            model: ttsPaths.model,
+            modelConfig: ttsPaths.modelConfig,
+            tokens: ttsPaths.tokens,
+            numThreads: 1,
+            debug: true,
+            noiseScale: 0.667,  // from inference.noise_scale
+            lengthScale: 1.0,   // from inference.length_scale
+            noiseW: 0.8        // from inference.noise_w
+        };
+
+        // Validate configuration
+        validateConfig(ttsConfig, 'TTS');
+
+        // Test TTS generation
+        const synthesizer = new sherpa.OfflineTts(ttsConfig);
+        const testText = "This is a test of the text-to-speech system.";
+        const result = synthesizer.generate(testText);
+        
+        outputChannel.appendLine(`\nTTS Test Results:`);
+        outputChannel.appendLine(`  Input text: ${testText}`);
+        outputChannel.appendLine(`  Output sample rate: ${result.sampleRate}`);
+        outputChannel.appendLine(`  Output samples length: ${result.samples.length}`);
+        outputChannel.appendLine(`  Test completed successfully ✅`);
+    } catch (error) {
+        outputChannel.appendLine(`\n❌ TTS Test Failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
+    }
+} 

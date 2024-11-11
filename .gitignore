@@ -1,46 +1,29 @@
-# Dependencies
+# Dependencies and build outputs
 node_modules/
-
-# Compiled output
 out/
 dist/
-
-# VS Code specific files
-.vscode/
 *.vsix
 
-# Environment files
-.env
-.env.local
+# VS Code specific
+.vscode-test/
+.vscode/
 
-# Logs
+# Environment and logs
+.env
 *.log
 npm-debug.log*
 
-# Operating System Files
+# OS specific
 .DS_Store
 Thumbs.db
 
-# Test coverage
-coverage/
+# Model files - ignore everything in models
+models/*
 
-# Reference Documentation
-reference_docs/
-
-# VS Code Extension defaults
-.vscode-test/
-*.vsix
-node_modules/
-out/
-
-# Model files
-models/**/*.onnx
-models/**/*.bin
-models/**/*.json
-models/**/config*
-models/**/tokens*
-models/**/*.bz2
-
-# Keep model directory structure
-!models/**/
-!models/**/.gitkeep
+# But keep these structure files
+!models/.gitkeep
+!models/stt/.gitkeep
+!models/tts/.gitkeep
+!models/stt/model_config.json
+!models/tts/model_config.json
+!models/README.md

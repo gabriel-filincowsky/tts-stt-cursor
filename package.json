@@ -27,6 +27,11 @@
         "command": "tts-stt-cursor.selectVoice",
         "title": "Select TTS Voice",
         "icon": "$(settings-gear)"
+      },
+      {
+        "command": "tts-stt-cursor.testTTS",
+        "title": "TTS-STT: Test TTS Configuration",
+        "category": "TTS-STT"
       }
     ],
     "menus": {
@@ -38,6 +43,10 @@
         {
           "command": "tts-stt-cursor.startTTS",
           "group": "navigation"
+        },
+        {
+          "command": "tts-stt-cursor.testTTS",
+          "group": "navigation@1"
         }
       ]
     },
@@ -58,7 +67,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "postinstall": "node scripts/setup-models.js",
+    "download-models": "node scripts/download-models.js"
   },
   "dependencies": {
     "sherpa-onnx-node": "^1.10.30",

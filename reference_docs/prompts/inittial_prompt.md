@@ -1,8 +1,11 @@
-Today is 2024-11-10
+Today is 2024-11-11
 
 Please review my system prompt and the following documentation.
 
-@small_project_description_starting_point.md, @small_implementation_plan.md
+@https://k2-fsa.github.io/sherpa/onnx/index.html 
+@https://k2-fsa.github.io/sherpa/onnx/wasm/index.html#sherpa-onnx-wasm 
+@https://k2-fsa.github.io/sherpa/onnx/wasm/install-emscripten.html 
+@https://k2-fsa.github.io/sherpa/onnx/wasm/build.html 
 
 For now, just confirm that you understand the context and then acknowledge it. Next, I will share more details.
 

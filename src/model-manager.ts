@@ -19,8 +19,11 @@ export interface ModelInfo {
 
 export class ModelManager {
     private availableModels: ModelInfo[] = [];
+    private logger: (message: string) => void;
 
-    constructor(private context: vscode.ExtensionContext) {}
+    constructor(private context: vscode.ExtensionContext, logger: (message: string) => void) {
+        this.logger = logger;
+    }
 
     async initialize(): Promise<boolean> {
         try {
@@ -35,7 +38,7 @@ export class ModelManager {
 
             return true;
         } catch (error) {
-            console.error('Model initialization error:', error);
+            this.logger(`Model initialization error: ${error instanceof Error ? error.message : 'Unknown error'}`);
             return false;
         }
     }
@@ -76,33 +79,32 @@ export class ModelManager {
                 });
             }
         }
-
-        console.log('Found models:', this.availableModels);
     }
 
     private async extractModel(compressedPath: string): Promise<string> {
         const baseName = path.parse(path.parse(compressedPath).name).name;
         const extractDir = path.join(path.dirname(compressedPath), baseName);
-        
+
+        // Validate compressed file exists
+        if (!await this.validateModelPath(compressedPath)) {
+            throw new Error(`Compressed model file not found: ${compressedPath}`);
+        }
+
         try {
             // Check if already extracted
             await fs.access(extractDir);
-            console.log(`Model already extracted at: ${extractDir}`);
-            
-            // Verify the directory has contents
             const contents = await fs.readdir(extractDir);
             if (contents.length > 0) {
+                this.logger(`Model already extracted at: ${extractDir}`);
                 return extractDir;
             }
-            // If directory is empty, remove it and extract again
-            await fs.rm(extractDir, { recursive: true });
         } catch {
-            // Directory doesn't exist, that's fine
+            // Directory doesn't exist or is empty, proceed with extraction
+            await fs.mkdir(extractDir, { recursive: true });
         }
 
         // Extract the model
-        console.log(`Extracting model from: ${compressedPath}`);
-        await fs.mkdir(extractDir, { recursive: true });
+        this.logger(`Extracting model from: ${compressedPath} to ${extractDir}`);
 
         return new Promise((resolve, reject) => {
             const readStream = fsSync.createReadStream(compressedPath);
@@ -113,25 +115,31 @@ export class ModelManager {
                     strip: 1  // Strip the first directory level
                 }))
                 .on('error', (error: ExtractError) => {
-                    console.error(`Extraction failed:`, error);
+                    this.logger(`Extraction failed: ${error.message}`);
                     reject(error);
                 })
                 .on('end', () => {
-                    console.log(`Extraction complete to: ${extractDir}`);
+                    this.logger(`Extraction complete to: ${extractDir}`);
                     resolve(extractDir);
                 });
         });
     }
 
     async getCurrentModel(type: 'stt' | 'tts'): Promise<ModelInfo | undefined> {
-        return this.availableModels.find(m => m.type === type);
+        const model = this.availableModels.find(m => m.type === type);
+        this.logger(`Retrieved current model for type '${type}': ${model ? model.name : 'None'}`);
+        return model;
     }
 
     async verifyModelFiles(modelInfo: ModelInfo): Promise<boolean> {
         try {
-            console.log(`Verifying files in: ${modelInfo.extractedPath}`);
+            this.logger(`Verifying files in: ${modelInfo.extractedPath}`);
             const files = await fs.readdir(modelInfo.extractedPath);
-            console.log(`Files in ${modelInfo.type.toUpperCase()} model directory:`, files);
+            this.logger(`Found files: ${files.join(', ')}`);
+
+            // Get the shared config path
+            const configDir = path.dirname(modelInfo.extractedPath);
+            const sharedConfigPath = path.join(configDir, 'model_config.json');
 
             const requiredFiles = modelInfo.type === 'stt' 
                 ? [
@@ -139,18 +147,58 @@ export class ModelManager {
                     'decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
                     'joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
                     'tokens.txt'
-                ]
+                  ]
                 : [
                     'en_US-amy-low.onnx',
                     'en_US-amy-low.onnx.json',
                     'tokens.txt'
                 ];
 
-            const hasAllFiles = requiredFiles.every(file => files.includes(file));
-            console.log(`Required files ${hasAllFiles ? 'found' : 'missing'} in ${modelInfo.extractedPath}`);
-            return hasAllFiles;
+            // Check shared config exists
+            try {
+                await fs.access(sharedConfigPath);
+                this.logger(`Found shared config at: ${sharedConfigPath}`);
+            } catch {
+                this.logger(`Missing shared config at: ${sharedConfigPath}`);
+                return false;
+            }
+
+            const missingFiles = requiredFiles.filter(file => !files.includes(file));
+            
+            if (missingFiles.length > 0) {
+                this.logger(`Missing required files: ${missingFiles.join(', ')}`);
+                return false;
+            }
+
+            // Verify file contents are accessible
+            for (const file of requiredFiles) {
+                const filePath = path.join(modelInfo.extractedPath, file);
+                try {
+                    const stats = await fs.stat(filePath);
+                    if (stats.size === 0) {
+                        this.logger(`File is empty: ${file}`);
+                        return false;
+                    }
+                } catch (error) {
+                    this.logger(`Error accessing file ${file}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    return false;
+                }
+            }
+
+            this.logger(`All required files verified successfully in ${modelInfo.extractedPath}`);
+            return true;
         } catch (error) {
-            console.error(`Error verifying model files:`, error);
+            this.logger(`Error verifying model files: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            return false;
+        }
+    }
+
+    private async validateModelPath(path: string): Promise<boolean> {
+        try {
+            await fs.access(path);
+            const stats = await fs.stat(path);
+            return stats.isFile();
+        } catch {
             return false;
         }
     }
