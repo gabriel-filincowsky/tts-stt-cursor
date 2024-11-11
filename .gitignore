@@ -39,6 +39,7 @@ models/**/*.bin
 models/**/*.json
 models/**/config*
 models/**/tokens*
+models/**/*.bz2
 
 # Keep model directory structure
 !models/**/
