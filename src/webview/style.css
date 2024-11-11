@@ -1,14 +1,55 @@
-.container {
+body {
+    font-family: Arial, sans-serif;
     padding: 20px;
-    font-family: var(--vscode-font-family);
-    color: var(--vscode-foreground);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: var(--vscode-editor-background);
+    color: var(--vscode-editor-foreground);
 }
 
-h1 {
-    font-size: 1.2em;
+button {
+    margin: 10px;
+    padding: 12px 24px;
+    font-size: 16px;
+    cursor: pointer;
+    background-color: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: none;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+button:hover {
+    background-color: var(--vscode-button-hoverBackground);
+}
+
+button:active {
+    background-color: var(--vscode-button-pressedBackground);
+}
+
+.recording {
+    background-color: var(--vscode-errorForeground) !important;
+}
+
+.status {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.button-container {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
     margin-bottom: 20px;
-}
-
-#controls {
-    margin-top: 20px;
 } 

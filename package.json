@@ -1,8 +1,9 @@
 {
   "name": "tts-stt-cursor",
   "displayName": "TTS-STT for Cursor",
-  "description": "Speech-to-text and text-to-speech functionality for Cursor IDE using Sherpa-onnx",
+  "description": "Speech-to-Text and Text-to-Speech capabilities for Cursor IDE using Sherpa-onnx",
   "version": "0.0.1",
+  "publisher": "gabriel-filincowsky",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -34,13 +35,22 @@
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
+  "dependencies": {
+    "sherpa-onnx-node": "^1.10.30"
+  },
   "devDependencies": {
     "@types/node": "^16.18.119",
     "@types/vscode": "^1.95.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "@vscode/test-electron": "^2.3.9",
     "eslint": "^8.57.1",
     "typescript": "^5.6.3"
   },
-  "private": true
+  "private": true,
+  "files": [
+    "out/**/*",
+    "models/**/*",
+    "media/**/*"
+  ]
 }
