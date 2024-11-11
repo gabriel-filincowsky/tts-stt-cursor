@@ -22,14 +22,14 @@
     - [x] Configure VS Code launch and task configurations.
 
 5. **Implement STT Functionality**
-    - [ ] Download the STT/ASR models.
-    - [ ] Set up audio input capture in the Webview.
+    - [x] Download the STT/ASR models.
+    - [x] Set up audio input capture in the Webview.
     - [ ] Integrate Sherpa-onnx STT processing in the extension.
     - [ ] Handle transcription results and display them in the IDE.
 
 6. **Implement TTS Functionality**
-    - [ ] Download the TTS models.
-    - [ ] Capture text input or selection from the user.
+    - [x] Download the TTS models.
+    - [x] Capture text input or selection from the user.
     - [ ] Integrate Sherpa-onnx TTS processing in the extension.
     - [ ] Play the synthesized audio in the Webview.
 
@@ -72,254 +72,93 @@ Install the necessary development packages for building VS Code extensions and t
 
 Update the `package.json` file with extension metadata (using package name 'tts-stt-cursor'), activation events, contributions, scripts, and dependencies. Create the main extension entry point, importing required modules and setting up the activation function and command registrations. Develop the webview files, including HTML content for the interface, JavaScript for handling user interactions and communication with the extension, and CSS for styling. Configure VS Code launch and task configurations to facilitate debugging and development.
 
-#### a. Create the Extension Manifest (`package.json`)
-
-Update the existing `package.json` with extension metadata:
-
-```json
-{
-  "name": "tts-stt-cursor",
-  "displayName": "TTS-STT for Cursor",
-  "description": "Speech-to-Text and Text-to-Speech capabilities for Cursor IDE",
-  "version": "0.0.1",
-  "publisher": "gabriel-filincowsky",
-  "engines": {
-    "vscode": "^1.60.0"
-  },
-  "categories": ["Other"],
-  "activationEvents": ["onCommand:tts-stt-cursor.start"],
-  "main": "./out/extension.js",
-  "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile",
-    "test": "node ./out/test/runTest.js"
-  },
-  "devDependencies": {
-    "typescript": "^4.4.3",
-    "vscode": "^1.60.0",
-    "@types/node": "^14.17.0",
-    "@types/vscode": "^1.60.0"
-  },
-  "dependencies": {
-    "sherpa-onnx-node": "^1.0.0"
-  },
-  "contributes": {
-    "commands": [
-      {
-        "command": "tts-stt-cursor.start",
-        "title": "Start TTS-STT for Cursor"
-      }
-    ]
-  }
-}
-```
-
-#### b. Create the Main Extension Entry Point (`extension.ts`)
-
-In the `src/` directory, create `extension.ts`:
-
-```typescript
-import * as vscode from 'vscode';
-import * as path from 'path';
-import * as sherpa from 'sherpa-onnx-node';
-
-export function activate(context: vscode.ExtensionContext) {
-  console.log('Extension "TTS-STT for Cursor" is now active.');
-
-  let disposable = vscode.commands.registerCommand('tts-stt-cursor.start', () => {
-    vscode.window.showInformationMessage('TTS-STT Extension Started');
-
-    // Initialize Sherpa-onnx
-    sherpa.init();
-
-    // Create and show a new webview
-    const panel = vscode.window.createWebviewPanel(
-      'ttsSttCursor',
-      'TTS-STT for Cursor',
-      vscode.ViewColumn.One,
-      {
-        enableScripts: true,
-        localResourceRoots: [
-          vscode.Uri.file(path.join(context.extensionPath, 'media')),
-          vscode.Uri.file(path.join(context.extensionPath, 'out'))
-        ]
-      }
-    );
-
-    // Set the webview's HTML content
-    panel.webview.html = getWebviewContent(context, panel.webview);
-
-    // Handle messages from the webview
-    panel.webview.onDidReceiveMessage(
-      async (message) => {
-        switch (message.command) {
-          case 'startSTT':
-            await handleSTT(message.audioData);
-            break;
-          case 'startTTS':
-            await handleTTS(message.text);
-            break;
-        }
-      },
-      undefined,
-      context.subscriptions
-    );
-  });
-
-  context.subscriptions.push(disposable);
-}
-
-export function deactivate() {}
-
-// Additional functions to be implemented:
-// - getWebviewContent()
-// - handleSTT()
-// - handleTTS()
-```
-
-#### c. Set Up the Webview Files
-
-Create the `webview/` directory inside `src/` and add the following files:
-
-##### i. `index.html`
-
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-{{nonce}}'; style-src 'self' 'unsafe-inline';">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="style.css" rel="stylesheet">
-  <title>TTS-STT for Cursor</title>
-</head>
-<body>
-  <button id="start-stt">🎤 Start STT</button>
-  <button id="start-tts">🔊 Start TTS</button>
-
-  <script nonce="{{nonce}}" src="script.js"></script>
-</body>
-</html>
-```
-
-Replace `{{nonce}}` with the generated nonce in `extension.ts`.
-
-##### ii. `script.js`
-
-```javascript
-(function () {
-  const vscode = acquireVsCodeApi();
-
-  document.getElementById('start-stt').addEventListener('click', () => {
-    startSTT();
-  });
-
-  document.getElementById('start-tts').addEventListener('click', () => {
-    const text = prompt('Enter text for TTS:');
-    if (text) {
-      vscode.postMessage({ command: 'startTTS', text: text });
-    }
-  });
-
-  function startSTT() {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        // Implement audio capture and send to extension
-      })
-      .catch(err => {
-        console.error('Error accessing microphone:', err);
-      });
-  }
-
-  window.addEventListener('message', event => {
-    const message = event.data;
-    switch (message.command) {
-      case 'playAudio':
-        playAudio(message.audioData);
-        break;
-    }
-  });
-
-  function playAudio(audioData) {
-    const audioContext = new AudioContext();
-    audioContext.decodeAudioData(audioData, buffer => {
-      const source = audioContext.createBufferSource();
-      source.buffer = buffer;
-      source.connect(audioContext.destination);
-      source.start(0);
-    });
-  }
-})();
-```
-
-##### iii. `style.css`
-
-```css
-body {
-  font-family: Arial, sans-serif;
-  padding: 10px;
-}
-
-button {
-  margin: 5px;
-  padding: 10px 20px;
-  font-size: 16px;
-  cursor: pointer;
-}
-```
-
-#### d. Configure VS Code Launch and Task Configurations
-
-Create the `.vscode/` directory and add:
-
-##### i. `launch.json`
-
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Run Extension",
-      "type": "extensionHost",
-      "request": "launch",
-      "runtimeExecutable": "${execPath}",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
-      "outFiles": ["${workspaceFolder}/out/**/*.js"],
-      "preLaunchTask": "npm: watch"
-    }
-  ]
-}
-```
-
-##### ii. `tasks.json`
-
-```json
-{
-  "version": "2.0.0",
-  "tasks": [
-    {
-      "label": "watch",
-      "type": "shell",
-      "command": "npm run watch",
-      "isBackground": true,
-      "presentation": {
-        "reveal": "silent"
-      },
-      "problemMatcher": "$tsc-watch"
-    }
-  ]
-}
-```
-
 ### 5. Implement STT Functionality
 
 In the webview, set up audio input capture using the Web Audio API, handling user permissions and potential errors. Integrate Sherpa-onnx STT processing in the extension, converting audio data received from the webview into text. Handle the transcription results by displaying them to the user or inserting them into the editor.
 
+#### a. Set Up Audio Input Capture in the Webview
+
+In `script.js`, implement the audio capture logic within `startSTT()`:
+
+```javascript
+function startSTT() {
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(stream => {
+      const mediaRecorder = new MediaRecorder(stream);
+      const audioChunks = [];
+
+      mediaRecorder.ondataavailable = event => {
+        audioChunks.push(event.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        const reader = new FileReader();
+        reader.onload = () => {
+          const arrayBuffer = reader.result;
+          vscode.postMessage({ command: 'startSTT', audioData: arrayBuffer });
+        };
+        reader.readAsArrayBuffer(audioBlob);
+      };
+
+      mediaRecorder.start();
+
+      setTimeout(() => {
+        mediaRecorder.stop();
+      }, 5000); // Record for 5 seconds
+    })
+    .catch(err => {
+      console.error('Error accessing microphone:', err);
+    });
+}
+```
+
+#### b. Integrate TTS-STT for Cursor STT Processing in the Extension
+
+In `extension.ts`, implement `handleSTT()`:
+
+```typescript
+async function handleSTT(audioData: ArrayBuffer) {
+  // Convert ArrayBuffer to appropriate format for Sherpa-onnx
+  const audioBuffer = Buffer.from(audioData);
+
+  // Process audio with Sherpa-onnx
+  const transcription = await sherpa.stt(audioBuffer);
+
+  // Send the transcription back to the webview or insert into the editor
+  vscode.window.showInformationMessage(`Transcription: ${transcription}`);
+}
+```
+
+#### c. Handle Transcription Results and Display Them in the IDE
+
+Decide whether to insert the transcribed text into the active editor or display it in a message. Modify `handleSTT()` accordingly.
+
 ### 6. Implement TTS Functionality
 
 Capture text input from the user or obtain selected text from the editor. Integrate Sherpa-onnx TTS processing to synthesize speech from the text input. Send the synthesized audio back to the webview for playback, ensuring smooth and synchronized audio output.
+
+#### a. Capture Text Input or Selection from the User
+
+In the webview, the user inputs text via a prompt. Alternatively, capture selected text from the editor.
+
+#### b. Integrate TTS-STT for Cursor TTS Processing in the Extension
+
+In `extension.ts`, implement `handleTTS()`:
+
+```typescript
+async function handleTTS(text: string) {
+  // Process text with Sherpa-onnx TTS
+  const audioBuffer = await sherpa.tts(text);
+
+  // Send the audio data back to the webview for playback
+  panel.webview.postMessage({ command: 'playAudio', audioData: audioBuffer });
+}
+```
+
+#### c. Play the Synthesized Audio in the Webview
+
+In `script.js`, handle the `playAudio` command as previously implemented.
 
 ### 7. Handle Permissions and Security
 

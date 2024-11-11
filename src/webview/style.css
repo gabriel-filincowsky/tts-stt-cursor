@@ -33,12 +33,21 @@ button:active {
 
 .recording {
     background-color: var(--vscode-errorForeground) !important;
+    animation: pulse 1.5s infinite;
 }
 
 .status {
-    margin-top: 10px;
-    font-size: 14px;
+    margin-top: 20px;
+    padding: 10px;
+    text-align: center;
     color: var(--vscode-descriptionForeground);
+    font-style: italic;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.7; }
+    100% { opacity: 1; }
 }
 
 .container {

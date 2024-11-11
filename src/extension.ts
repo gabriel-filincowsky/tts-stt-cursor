@@ -98,15 +98,11 @@ function createWebviewPanel(
         vscode.ViewColumn.One,
         {
             enableScripts: true,
-            retainContextWhenHidden: true,
-            localResourceRoots: [
-                vscode.Uri.file(path.join(context.extensionPath, 'media')),
-                vscode.Uri.file(path.join(context.extensionPath, 'out')),
-                vscode.Uri.file(path.join(context.extensionPath, 'src', 'webview'))
-            ]
+            retainContextWhenHidden: true
         }
     );
 
+    // Handle panel disposal
     currentPanel.onDidDispose(
         () => {
             currentPanel = undefined;
@@ -115,25 +111,34 @@ function createWebviewPanel(
         context.subscriptions
     );
 
+    // Set up the webview content
     currentPanel.webview.html = getWebviewContent(context, currentPanel.webview);
 
-    // Initialize Sherpa-onnx when needed
-    initializeSherpa(context, modelManager).catch(error => {
-        vscode.window.showErrorMessage(error.message);
-    });
-
+    // Handle messages from the webview
     currentPanel.webview.onDidReceiveMessage(
-        async (message: WebviewMessage) => {
+        async (message: any) => {
             try {
+                if (!currentPanel) {
+                    throw new Error('Webview panel is not available');
+                }
+
                 switch (message.command) {
                     case 'startSTT':
                         const transcription = await handleSTT(message.audioData);
-                        currentPanel?.webview.postMessage({ command: 'transcriptionResult', text: transcription });
+                        currentPanel.webview.postMessage({ 
+                            command: 'transcriptionResult', 
+                            text: transcription 
+                        });
                         break;
+                        
                     case 'startTTS':
                         const audioData = await handleTTS(message.text);
-                        currentPanel?.webview.postMessage({ command: 'playAudio', audioData });
+                        currentPanel.webview.postMessage({ 
+                            command: 'playAudio', 
+                            audioData: audioData 
+                        });
                         break;
+                        
                     case 'error':
                         vscode.window.showErrorMessage(message.text);
                         break;
@@ -146,6 +151,11 @@ function createWebviewPanel(
         undefined,
         context.subscriptions
     );
+
+    // Initialize Sherpa-onnx
+    initializeSherpa(context, modelManager).catch(error => {
+        vscode.window.showErrorMessage(error.message);
+    });
 }
 
 function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
@@ -181,7 +191,30 @@ async function handleSTT(audioData: ArrayBuffer): Promise<string> {
     }
 
     try {
-        return await sherpa.transcribe(sherpaState.sttConfig, audioData);
+        // Convert ArrayBuffer to Buffer for Sherpa-onnx
+        const audioBuffer = Buffer.from(audioData);
+        
+        // Process audio with Sherpa-onnx
+        const transcription = await sherpa.transcribe(sherpaState.sttConfig, audioBuffer);
+        
+        // Get the active text editor
+        const editor = vscode.window.activeTextEditor;
+        
+        if (editor) {
+            // Insert the transcription at the current cursor position
+            editor.edit(editBuilder => {
+                if (editor.selection.isEmpty) {
+                    editBuilder.insert(editor.selection.active, transcription);
+                } else {
+                    editBuilder.replace(editor.selection, transcription);
+                }
+            });
+        } else {
+            // If no editor is active, show the transcription in a message
+            vscode.window.showInformationMessage(`Transcription: ${transcription}`);
+        }
+
+        return transcription;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during transcription';
         throw new Error(`STT processing failed: ${errorMessage}`);
@@ -194,7 +227,9 @@ async function handleTTS(text: string): Promise<ArrayBuffer> {
     }
 
     try {
-        return await sherpa.synthesize(sherpaState.ttsConfig, text);
+        // Process text with Sherpa-onnx TTS
+        const audioBuffer = await sherpa.synthesize(sherpaState.ttsConfig, text);
+        return audioBuffer;
     } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during synthesis';
         throw new Error(`TTS processing failed: ${errorMessage}`);

@@ -2,47 +2,53 @@
     const vscode = acquireVsCodeApi();
     let mediaRecorder = null;
     let audioChunks = [];
+    let isRecording = false;
 
-    document.getElementById('start-stt').addEventListener('click', () => {
-        if (!mediaRecorder) {
+    // UI Elements
+    const sttButton = document.getElementById('start-stt');
+    const ttsButton = document.getElementById('start-tts');
+    const statusElement = document.createElement('div');
+    statusElement.className = 'status';
+    document.body.appendChild(statusElement);
+
+    // STT Functionality
+    sttButton.addEventListener('click', () => {
+        if (!isRecording) {
             startSTT();
         } else {
             stopSTT();
         }
     });
 
-    document.getElementById('start-tts').addEventListener('click', () => {
-        const text = prompt('Enter text for TTS:');
-        if (text) {
-            vscode.postMessage({ command: 'startTTS', text: text });
-        }
-    });
-
     function startSTT() {
         navigator.mediaDevices.getUserMedia({ audio: true })
             .then(stream => {
-                const button = document.getElementById('start-stt');
-                button.textContent = '⏹️ Stop STT';
-                
+                isRecording = true;
+                sttButton.textContent = '⏹️ Stop Recording';
+                sttButton.classList.add('recording');
+                statusElement.textContent = 'Recording...';
+
                 mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = (event) => {
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = event => {
                     audioChunks.push(event.data);
                 };
-                
+
                 mediaRecorder.onstop = () => {
                     const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                     const reader = new FileReader();
-                    reader.readAsArrayBuffer(audioBlob);
                     reader.onloadend = () => {
                         vscode.postMessage({
                             command: 'startSTT',
                             audioData: reader.result
                         });
+                        statusElement.textContent = 'Processing speech...';
                     };
-                    audioChunks = [];
+                    reader.readAsArrayBuffer(audioBlob);
                 };
-                
-                mediaRecorder.start(1000); // Collect data every second
+
+                mediaRecorder.start();
             })
             .catch(err => {
                 console.error('Error accessing microphone:', err);
@@ -50,6 +56,7 @@
                     command: 'error',
                     text: 'Failed to access microphone: ' + err.message
                 });
+                statusElement.textContent = 'Error: Failed to access microphone';
             });
     }
 
@@ -57,29 +64,60 @@
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
             mediaRecorder.stop();
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            mediaRecorder = null;
-            
-            const button = document.getElementById('start-stt');
-            button.textContent = '🎤 Start STT';
+            isRecording = false;
+            sttButton.textContent = '🎤 Start Recording';
+            sttButton.classList.remove('recording');
         }
     }
 
+    // TTS Functionality
+    ttsButton.addEventListener('click', () => {
+        const text = prompt('Enter text for TTS:');
+        if (text) {
+            statusElement.textContent = 'Generating speech...';
+            vscode.postMessage({ command: 'startTTS', text: text });
+        }
+    });
+
+    // Handle messages from the extension
     window.addEventListener('message', event => {
         const message = event.data;
         switch (message.command) {
+            case 'transcriptionResult':
+                statusElement.textContent = 'Transcription complete';
+                setTimeout(() => {
+                    statusElement.textContent = '';
+                }, 3000);
+                break;
+
             case 'playAudio':
-                playAudio(message.audioData);
+                statusElement.textContent = 'Playing audio...';
+                playAudio(message.audioData)
+                    .then(() => {
+                        statusElement.textContent = 'Audio complete';
+                        setTimeout(() => {
+                            statusElement.textContent = '';
+                        }, 3000);
+                    })
+                    .catch(error => {
+                        statusElement.textContent = 'Error playing audio';
+                        console.error('Error playing audio:', error);
+                    });
                 break;
         }
     });
 
-    function playAudio(audioData) {
+    async function playAudio(audioData) {
         const audioContext = new AudioContext();
-        audioContext.decodeAudioData(audioData, buffer => {
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            source.start(0);
+        const audioBuffer = await audioContext.decodeAudioData(audioData);
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        source.start(0);
+        
+        return new Promise((resolve) => {
+            source.onended = resolve;
         });
     }
 })();
+
