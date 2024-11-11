@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as sherpa from 'sherpa-onnx-node';
+import { ModelManager } from './model-manager';
 
 // Define message types for type safety
 interface STTMessage {
@@ -32,52 +33,60 @@ const sherpaState: SherpaState = {
     isInitialized: false
 };
 
-async function initializeSherpa(context: vscode.ExtensionContext) {
-    if (sherpaState.isInitialized) {
-        return;
-    }
+interface GPUInfo {
+    isAvailable: boolean;
+    deviceId: number;
+}
 
+async function checkGPUAvailability(): Promise<GPUInfo> {
     try {
-        await sherpa.init();
-
-        // Configure STT
-        sherpaState.sttConfig = {
-            modelPath: path.join(context.extensionPath, 'models', 'stt'),
-            deviceId: -1, // CPU
-            sampleRate: 16000,
-            channels: 1
-        };
-
-        // Configure TTS
-        sherpaState.ttsConfig = {
-            modelPath: path.join(context.extensionPath, 'models', 'tts'),
-            deviceId: -1, // CPU
-            speakerId: 0,
-            speed: 1.0
-        };
-
-        sherpaState.isInitialized = true;
-    } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to initialize Sherpa-onnx';
-        throw new Error(`Sherpa initialization failed: ${errorMessage}`);
+        // Try to initialize with GPU (device 0)
+        await sherpa.init({ deviceId: 0 });
+        return { isAvailable: true, deviceId: 0 };
+    } catch (error) {
+        try {
+            // If first GPU failed, try device 1 (some systems have multiple GPUs)
+            await sherpa.init({ deviceId: 1 });
+            return { isAvailable: true, deviceId: 1 };
+        } catch (error) {
+            // If both GPU attempts failed, fall back to CPU
+            await sherpa.init({ deviceId: -1 });
+            return { isAvailable: false, deviceId: -1 };
+        }
     }
 }
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     console.log('Extension "TTS-STT for Cursor" is now active.');
 
+    // Initialize ModelManager
+    const modelManager = new ModelManager(context);
+    const initialized = await modelManager.initialize();
+    
+    if (!initialized) {
+        throw new Error('Failed to initialize models');
+    }
+
     let sttCommand = vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
-        createWebviewPanel(context, 'STT');
+        createWebviewPanel(context, 'STT', modelManager);
     });
 
     let ttsCommand = vscode.commands.registerCommand('tts-stt-cursor.startTTS', () => {
-        createWebviewPanel(context, 'TTS');
+        createWebviewPanel(context, 'TTS', modelManager);
     });
 
-    context.subscriptions.push(sttCommand, ttsCommand);
+    let selectVoiceCommand = vscode.commands.registerCommand('tts-stt-cursor.selectVoice', async () => {
+        await modelManager.selectTTSModel();
+    });
+
+    context.subscriptions.push(sttCommand, ttsCommand, selectVoiceCommand);
 }
 
-function createWebviewPanel(context: vscode.ExtensionContext, mode: 'STT' | 'TTS') {
+function createWebviewPanel(
+    context: vscode.ExtensionContext, 
+    mode: 'STT' | 'TTS',
+    modelManager: ModelManager
+) {
     if (currentPanel) {
         currentPanel.reveal(vscode.ViewColumn.One);
         return;
@@ -108,8 +117,8 @@ function createWebviewPanel(context: vscode.ExtensionContext, mode: 'STT' | 'TTS
 
     currentPanel.webview.html = getWebviewContent(context, currentPanel.webview);
 
-    // Initialize Sherpa-onnx
-    initializeSherpa(context).catch(error => {
+    // Initialize Sherpa-onnx when needed
+    initializeSherpa(context, modelManager).catch(error => {
         vscode.window.showErrorMessage(error.message);
     });
 
@@ -199,6 +208,48 @@ function getNonce() {
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
+}
+
+async function initializeSherpa(
+    context: vscode.ExtensionContext,
+    modelManager: ModelManager
+) {
+    if (sherpaState.isInitialized) {
+        return;
+    }
+
+    try {
+        await sherpa.init();
+
+        // Get current models
+        const sttModel = await modelManager.getCurrentSTTModel();
+        const ttsModel = await modelManager.getCurrentTTSModel();
+
+        if (!sttModel || !ttsModel) {
+            throw new Error('Required models not found');
+        }
+
+        // Configure STT
+        sherpaState.sttConfig = {
+            modelPath: path.dirname(sttModel.path),
+            deviceId: -1, // CPU
+            sampleRate: 16000,
+            channels: 1
+        };
+
+        // Configure TTS
+        sherpaState.ttsConfig = {
+            modelPath: path.dirname(ttsModel.path),
+            deviceId: -1, // CPU
+            speakerId: 0,
+            speed: 1.0
+        };
+
+        sherpaState.isInitialized = true;
+    } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to initialize Sherpa-onnx';
+        throw new Error(`Sherpa initialization failed: ${errorMessage}`);
+    }
 }
 
 export function deactivate() {} 

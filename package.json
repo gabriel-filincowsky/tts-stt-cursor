@@ -10,10 +10,6 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [
-    "onCommand:tts-stt-cursor.startSTT",
-    "onCommand:tts-stt-cursor.startTTS"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
@@ -24,6 +20,10 @@
       {
         "command": "tts-stt-cursor.startTTS",
         "title": "Start Text-to-Speech"
+      },
+      {
+        "command": "tts-stt-cursor.selectVoice",
+        "title": "Select TTS Voice"
       }
     ]
   },
@@ -52,5 +52,13 @@
     "out/**/*",
     "models/**/*",
     "media/**/*"
-  ]
+  ],
+  "extensionDependencies": [],
+  "extensionKind": ["workspace"],
+  "capabilities": {
+    "virtualWorkspaces": false,
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  }
 }

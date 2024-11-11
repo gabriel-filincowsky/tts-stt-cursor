@@ -22,11 +22,13 @@
     - [x] Configure VS Code launch and task configurations.
 
 5. **Implement STT Functionality**
+    - [ ] Download the STT/ASR models.
     - [ ] Set up audio input capture in the Webview.
     - [ ] Integrate Sherpa-onnx STT processing in the extension.
     - [ ] Handle transcription results and display them in the IDE.
 
 6. **Implement TTS Functionality**
+    - [ ] Download the TTS models.
     - [ ] Capture text input or selection from the user.
     - [ ] Integrate Sherpa-onnx TTS processing in the extension.
     - [ ] Play the synthesized audio in the Webview.

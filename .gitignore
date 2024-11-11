@@ -26,3 +26,20 @@ coverage/
 
 # Reference Documentation
 reference_docs/
+
+# VS Code Extension defaults
+.vscode-test/
+*.vsix
+node_modules/
+out/
+
+# Model files
+models/**/*.onnx
+models/**/*.bin
+models/**/*.json
+models/**/config*
+models/**/tokens*
+
+# Keep model directory structure
+!models/**/
+!models/**/.gitkeep
