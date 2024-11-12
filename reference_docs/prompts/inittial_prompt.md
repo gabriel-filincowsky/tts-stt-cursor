@@ -5,7 +5,7 @@ Please review my system prompt and the following documentation.
 @sherpa-onnx1
 @sherpa-onnx2
 @sherpa-onnx3
-@sherpa-onnx4
+@web
 
 Confirm that you understand the context and then acknowledge it.
 
@@ -54,6 +54,8 @@ The primary focus of our next session is to conduct a thorough investigation of 
 This research phase is critical for resolving our current initialization issues and ensuring robust integration of Sherpa-onnx into our extension. The findings will directly inform necessary modifications to our configuration approach and type definitions.
 
 This context will be used to analyze Sherpa-onnx documentation and determine the correct configuration structure for both STT and TTS initialization.
+
+@codebase
 
 ***********************
 
