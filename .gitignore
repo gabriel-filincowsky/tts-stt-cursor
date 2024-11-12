@@ -27,3 +27,6 @@ models/*
 !models/stt/model_config.json
 !models/tts/model_config.json
 !models/README.md
+
+# Cursor workspace
+tts-stt-cursor.code-workspace
