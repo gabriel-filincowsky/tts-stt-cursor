@@ -30,3 +30,6 @@ models/*
 
 # Cursor workspace
 tts-stt-cursor.code-workspace
+
+# Cursor ignore
+.cursorignore

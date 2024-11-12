@@ -2,10 +2,10 @@ Today is 2024-11-11
 
 Please review my system prompt and the following documentation.
 
-@https://k2-fsa.github.io/sherpa/onnx/index.html 
-@https://k2-fsa.github.io/sherpa/onnx/wasm/index.html#sherpa-onnx-wasm 
-@https://k2-fsa.github.io/sherpa/onnx/wasm/install-emscripten.html 
-@https://k2-fsa.github.io/sherpa/onnx/wasm/build.html 
+https://k2-fsa.github.io/sherpa/onnx/index.html
+https://k2-fsa.github.io/sherpa/onnx/wasm/index.html#sherpa-onnx-wasm
+https://k2-fsa.github.io/sherpa/onnx/wasm/install-emscripten.html
+https://k2-fsa.github.io/sherpa/onnx/wasm/build.html
 
 For now, just confirm that you understand the context and then acknowledge it. Next, I will share more details.
 
@@ -16,86 +16,9 @@ For now, just confirm that you understand the context and then acknowledge it. N
 ## Project Overview
 We are developing a VS Code extension called "TTS-STT for Cursor" that integrates speech-to-text (STT) and text-to-speech (TTS) capabilities using the Sherpa-onnx framework. The extension is being developed in TypeScript and uses the sherpa-onnx-node native addon.
 
-## Current Implementation State
-We have successfully implemented:
-1. Basic extension structure
-2. Model management system
-3. Automatic model extraction from .tar.bz2 files
-4. Type definitions for Sherpa-onnx interfaces
-5. Basic UI with webview integration
-
 ## Current Challenge
 We are encountering initialization errors with Sherpa-onnx, specifically:
 - Error message: "Please check your config!"
-- Location: During OnlineRecognizer initialization
-- Context: After model extraction and verification succeeds
-
-## File Structure
-```
-tts-stt-cursor/
-├── src/
-│   ├── extension.ts          (Main extension logic)
-│   ├── model-manager.ts      (Model handling)
-│   ├── types/
-│   │   ├── sherpa-onnx-node.d.ts
-│   │   ├── tar.d.ts
-│   │   └── unbzip2-stream.d.ts
-│   └── webview/
-│       ├── script.js
-│       └── style.css
-└── models/
-    ├── stt/
-    │   ├── sherpa-onnx-streaming-zipformer-en-2023-06-26.tar.bz2
-    │   └── sherpa-onnx-streaming-zipformer-en-2023-06-26/
-    │       ├── encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx
-    │       ├── decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx
-    │       ├── joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx
-    │       └── tokens.txt
-    └── tts/
-        ├── vits-piper-en_US-amy-low.tar.bz2
-        └── vits-piper-en_US-amy-low/
-            ├── en_US-amy-low.onnx
-            ├── en_US-amy-low.onnx.json
-            └── tokens.txt
-```
-
-## Recent Progress
-1. Successfully implemented model extraction without intermediary folders
-2. Fixed circular reference issues in debugging
-3. Updated type definitions for Sherpa-onnx
-4. Implemented proper configuration structure for STT/TTS
-
-## Current Configuration
-```typescript
-const sttConfig: OnlineRecognizerConfig = {
-    transducer: {
-        encoder: "[path]/encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
-        decoder: "[path]/decoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
-        joiner: "[path]/joiner-epoch-99-avg-1-chunk-16-left-128.int8.onnx",
-    },
-    tokens: "[path]/tokens.txt",
-    featConfig: {
-        sampleRate: 16000,
-        featureDim: 80
-    },
-    decodingConfig: {
-        method: "greedy_search"
-    },
-    enableEndpoint: true
-};
-```
-
-## Next Steps
-1. Review Sherpa-onnx documentation for correct configuration requirements
-2. Verify model file structure matches Sherpa-onnx expectations
-3. Implement proper error handling for configuration issues
-4. Test initialization with verified configuration
-
-## Critical Points for Continuation
-1. The models are successfully extracted and verified
-2. All required files are present and accessible
-3. The configuration structure is defined but may need adjustment
-4. We need to understand Sherpa-onnx's exact configuration requirements
 
 ## 👉👉👉 Research Objective: Understanding Sherpa-onnx Requirements
 
