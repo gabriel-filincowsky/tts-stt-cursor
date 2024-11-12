@@ -2,19 +2,17 @@ Today is 2024-11-11
 
 Please review my system prompt and the following documentation.
 
-https://k2-fsa.github.io/sherpa/onnx/index.html
-https://k2-fsa.github.io/sherpa/onnx/wasm/index.html#sherpa-onnx-wasm
-https://k2-fsa.github.io/sherpa/onnx/wasm/install-emscripten.html
-https://k2-fsa.github.io/sherpa/onnx/wasm/build.html
+@sherpa-onnx1
+@sherpa-onnx2
+@sherpa-onnx3
+@sherpa-onnx4
 
-For now, just confirm that you understand the context and then acknowledge it. Next, I will share more details.
-
-***********************
+Confirm that you understand the context and then acknowledge it.
 
 # Project Context: TTS-STT for Cursor Extension Development
 
 ## Project Overview
-We are developing a VS Code extension called "TTS-STT for Cursor" that integrates speech-to-text (STT) and text-to-speech (TTS) capabilities using the Sherpa-onnx framework. The extension is being developed in TypeScript and uses the sherpa-onnx-node native addon.
+We are developing a Visual Studio Code extension named "TTS-STT for Cursor," which integrates speech-to-text (STT) and text-to-speech (TTS) functionalities using the Sherpa-ONNX framework. This extension is being developed in TypeScript and leverages the sherpa-onnx-node native addon for integration. By utilizing the Node.js addon, the project benefits from native performance and multi-threading support, ensuring efficient and real-time processing of speech data directly within the VS Code environment. This approach allows for seamless integration and execution of Sherpa-ONNX capabilities, providing users with robust STT and TTS features without the need for external services or platform-specific binaries.
 
 ## Current Challenge
 We are encountering initialization errors with Sherpa-onnx, specifically:
@@ -45,12 +43,6 @@ The primary focus of our next session is to conduct a thorough investigation of 
    - Studying recommended integration approaches
    - Understanding best practices for Node.js addon usage
    - Examining memory management and resource handling
-
-### Research Sources
-- Official Sherpa-onnx documentation
-- Node.js addon examples and documentation
-- Implementation examples and reference code
-- Community discussions and issue trackers
 
 ### Expected Outcomes
 1. Clear understanding of correct configuration structure
