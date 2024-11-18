@@ -15,11 +15,19 @@ declare module 'sherpa-onnx-node' {
     }
 
     export interface OnlineRecognizerConfig {
-        transducer: TransducerConfig;
+        transducer: {
+            encoder: string;
+            decoder: string;
+            joiner: string;
+        };
         tokens: string;
-        modelConfig?: string;
-        featConfig: FeatConfig;
-        decodingConfig: DecodingConfig;
+        featConfig: {
+            sampleRate: number;
+            featureDim: number;
+        };
+        decodingConfig: {
+            method: "greedy_search" | "modified_beam_search";
+        };
         enableEndpoint?: boolean;
         rule1MinTrailingSilence?: number;
         decoderConfig?: Record<string, unknown>;

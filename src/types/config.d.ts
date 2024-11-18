@@ -4,6 +4,9 @@ export interface TTSConfig {
     tokens: string;
     numThreads: number;
     debug: boolean;
+    noiseScale?: number;
+    lengthScale?: number;
+    noiseW?: number;
 }
 
 export interface STTConfig {
@@ -18,12 +21,11 @@ export interface STTConfig {
         featureDim: number;
     };
     decodingConfig: {
-        method: "greedy_search" | "modified_beam_search";
+        method: "greedy_search" | "modified_beam_search";  // Changed from string to literal type union
     };
     enableEndpoint: boolean;
-    modelConfig: string;
     rule1MinTrailingSilence: number;
     decoderConfig: Record<string, unknown>;
-    hotwordsFile: string;
-    hotwordsScore: number;
-} 
+    hotwordsFile?: string;
+    hotwordsScore?: number;
+}

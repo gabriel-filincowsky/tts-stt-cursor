@@ -4,18 +4,12 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import * as tar from 'tar';
 import bz2 from 'unbzip2-stream';
+import { ModelInfo } from './types/model-info';
 
 type ExtractError = Error & {
     code?: string;
     path?: string;
 };
-
-export interface ModelInfo {
-    name: string;
-    type: 'stt' | 'tts';
-    compressedPath: string;
-    extractedPath: string;
-}
 
 export class ModelManager {
     private availableModels: ModelInfo[] = [];
@@ -137,10 +131,6 @@ export class ModelManager {
             const files = await fs.readdir(modelInfo.extractedPath);
             this.logger(`Found files: ${files.join(', ')}`);
 
-            // Get the shared config path
-            const configDir = path.dirname(modelInfo.extractedPath);
-            const sharedConfigPath = path.join(configDir, 'model_config.json');
-
             const requiredFiles = modelInfo.type === 'stt' 
                 ? [
                     'encoder-epoch-99-avg-1-chunk-16-left-128.int8.onnx',
@@ -153,15 +143,6 @@ export class ModelManager {
                     'en_US-amy-low.onnx.json',
                     'tokens.txt'
                 ];
-
-            // Check shared config exists
-            try {
-                await fs.access(sharedConfigPath);
-                this.logger(`Found shared config at: ${sharedConfigPath}`);
-            } catch {
-                this.logger(`Missing shared config at: ${sharedConfigPath}`);
-                return false;
-            }
 
             const missingFiles = requiredFiles.filter(file => !files.includes(file));
             
@@ -202,4 +183,6 @@ export class ModelManager {
             return false;
         }
     }
-} 
+}
+
+export { ModelInfo };  // Re-export ModelInfo if needed elsewhere 

@@ -9,17 +9,19 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "lib": ["ES2020", "DOM"],
-    "types": ["node", "vscode"],
-    "typeRoots": [
-      "./node_modules/@types",
-      "./src/types"
+    "types": [
+      "node",
+      "mocha",
+      "vscode",
+      "sinon"
     ],
     "allowSyntheticDefaultImports": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    ".vscode-test"
   ]
 } 

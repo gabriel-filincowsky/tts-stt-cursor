@@ -34,9 +34,9 @@
     - [x] Play the synthesized audio in the Webview.
 
 7. **Handle Permissions and Security**
-    - [ ] Implement microphone permission requests.
-    - [ ] Set up Content Security Policy (CSP) for the Webview.
-    - [ ] Ensure data privacy by keeping processing local.
+    - [x] Implement microphone permission requests.
+    - [x] Set up Content Security Policy (CSP) for the Webview.
+    - [x] Ensure data privacy by keeping processing local.
 
 8. **Testing and Debugging**
     - [ ] Test functionality on different operating systems.
@@ -83,26 +83,6 @@ Capture text input from the user or obtain selected text from the editor. Integr
 ### 7. Handle Permissions and Security
 
 Implement proper permission requests for accessing the microphone, providing clear messages to the user about why permissions are needed. Set up a Content Security Policy for the webview to enhance security and prevent unauthorized content execution. Ensure that all data processing occurs locally, maintaining user privacy and data security.
-
-#### a. Implement Microphone Permission Requests
-
-Ensure that the webview properly requests microphone access and handles user denial gracefully.
-
-#### b. Set Up Content Security Policy (CSP) for the Webview
-
-In `extension.ts`, when setting the HTML content, include a nonce and define a strict CSP:
-
-```typescript
-function getWebviewContent(context: vscode.ExtensionContext, webview: vscode.Webview): string {
-  const nonce = getNonce();
-  // Replace '{{nonce}}' in index.html with the generated nonce
-  // Set CSP in the HTML head
-}
-```
-
-#### c. Ensure Data Privacy by Keeping Processing Local
-
-Confirm that all data processing occurs locally and no data is sent to external servers.
 
 ### 8. Testing and Debugging
 
