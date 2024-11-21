@@ -3,6 +3,7 @@ node_modules/
 out/
 dist/
 *.vsix
+native/
 
 # VS Code specific
 .vscode-test/
@@ -33,3 +34,7 @@ tts-stt-cursor.code-workspace
 
 # Cursor ignore
 .cursorignore
+
+# Logs
+logs/
+*.log

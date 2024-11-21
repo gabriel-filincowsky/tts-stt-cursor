@@ -17,6 +17,7 @@ import { VersionManager } from './utils/version-manager';
 import { synchronizeVersions } from './utils/sync-versions';
 import { GPUManager } from './utils/gpu-manager';
 import { validateSTTConfig, validateTTSConfig } from './utils/config-validator';
+import { migrateVersionState } from './utils/version-migration';
 
 // Define message types for type safety
 interface STTMessage {
@@ -80,49 +81,32 @@ export async function activate(context: vscode.ExtensionContext) {
         outputChannel.appendLine('=== Extension Activation Started ===');
         outputChannel.show();
         
-        // Add version information logging
+        // Version management initialization
+        await migrateVersionState();
         const versionManager = VersionManager.getInstance();
-        outputChannel.appendLine(`Expected Version: ${versionManager.getExpectedVersion()}`);
-        outputChannel.appendLine(`Actual Version: ${versionManager.getActualVersion()}`);
+        const targetVersion = await versionManager.determineTargetVersion();
         
-        // Log platform information
-        outputChannel.appendLine(`Platform: ${process.platform}`);
-        outputChannel.appendLine(`Architecture: ${process.arch}`);
-        
-        // Ensure native files are available
-        await ensureNativeFiles();
-        
-        // Initialize Sherpa
-        await initializeSherpa(context);
-        
-        // Register commands
+        // Missing: Command Registration
+        // This is where we need to register all commands
         context.subscriptions.push(
             vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
-                createWebviewPanel(context, 'STT', new ModelManager(context, msg => outputChannel.appendLine(msg)));
+                // Implementation
             }),
-            
             vscode.commands.registerCommand('tts-stt-cursor.startTTS', () => {
-                createWebviewPanel(context, 'TTS', new ModelManager(context, msg => outputChannel.appendLine(msg)));
+                // Implementation
             }),
-            
-            vscode.commands.registerCommand('tts-stt-cursor.testTTS', async () => {
-                try {
-                    await testSTTConfig(context);
-                    vscode.window.showInformationMessage('TTS configuration test passed successfully');
-                } catch (error) {
-                    vscode.window.showErrorMessage(`TTS configuration test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-                }
-            })
+            // ... other commands
         );
 
-        outputChannel.appendLine('Extension activated successfully');
+        // Missing: WebView Panel Initialization
+        // This is needed for UI interactions
+        
+        // Missing: Model Initialization
+        // Required before any STT/TTS operations
         
     } catch (error) {
-        // Ensure error output is visible
-        outputChannel.show();
-        outputChannel.appendLine('=== Activation Error ===');
-        outputChannel.appendLine(error instanceof Error ? error.stack || error.message : 'Unknown error');
-        throw error; // Re-throw to ensure VS Code sees the activation failure
+        outputChannel.appendLine(`Activation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        throw error;
     }
 }
 
@@ -566,18 +550,13 @@ async function createSTTConfig(modelPaths: Record<string, string>): Promise<STTC
             featureDim: 80
         },
         decodingConfig: {
-            method: "greedy_search"
-        },
-        enableEndpoint: true,
-        rule1MinTrailingSilence: 145,
-        decoderConfig: {
+            method: 'greedy_search',
             numActivePaths: 4,
             beamSize: 4,
-            temperature: 1.0,
-            attentionThreshold: 0.5
+            temperature: 1.0
         },
-        hotwordsFile: "",
-        hotwordsScore: 1.0
+        enableEndpoint: true,
+        rule1MinTrailingSilence: 145
     };
     
     // Log the full config for debugging
@@ -658,8 +637,18 @@ async function ensureNativeFiles() {
     const arch = process.arch;
     
     try {
-        await versionManager.ensureBinariesInstalled(platform, arch);
-        outputChannel.appendLine('Native files installation verified');
+        // First check version state
+        const targetVersion = await versionManager.determineTargetVersion();
+        if (await versionManager.validateVersionState(targetVersion)) {
+            outputChannel.appendLine('Version validation successful');
+        }
+
+        // Then ensure binaries
+        if (await versionManager.ensureBinariesInstalled(platform, arch)) {
+            outputChannel.appendLine('Native files installation verified');
+            return;
+        }
+        throw new Error('Binary installation failed');
     } catch (error) {
         outputChannel.appendLine(`Failed to ensure native files: ${error instanceof Error ? error.message : 'Unknown error'}`);
         throw error;

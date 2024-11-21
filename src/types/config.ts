@@ -10,13 +10,16 @@ export interface STTConfig {
         featureDim: number;
     };
     decodingConfig: {
-        method: string;
+        method: 'greedy_search' | 'modified_beam_search';
+        numActivePaths?: number;
+        beamSize?: number;
+        temperature?: number;
     };
     enableEndpoint: boolean;
     rule1MinTrailingSilence: number;
-    decoderConfig: Record<string, unknown>;
-    hotwordsFile: string;
-    hotwordsScore: number;
+    modelPath?: string;
+    useGPU?: boolean;
+    hotwordsFile?: string;
 }
 
 export interface TTSConfig {
@@ -24,7 +27,7 @@ export interface TTSConfig {
     modelConfig: string;
     tokens: string;
     numThreads: number;
-    debug: boolean;
+    debug?: boolean;
     noiseScale?: number;
     lengthScale?: number;
     noiseW?: number;

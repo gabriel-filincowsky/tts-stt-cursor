@@ -1,0 +1,13 @@
+{
+  "sherpaNode": "1.10.30",
+  "binaries": "0.0.0",
+  "lastVerified": "2024-11-19T21:23:37.905Z",
+  "platform": {},
+  "api": {
+    "lastCheck": "2024-11-19T21:23:37.906Z",
+    "rateLimit": {
+      "remaining": 60,
+      "reset": 0
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "transducer": {
+    "encoder": "test/fixtures/models/stt/encoder.onnx",
+    "decoder": "test/fixtures/models/stt/decoder.onnx",
+    "joiner": "test/fixtures/models/stt/joiner.onnx"
+  },
+  "tokens": "test/fixtures/models/stt/tokens.txt",
+  "featConfig": {
+    "sampleRate": 16000,
+    "featureDim": 80
+  },
+  "decodingConfig": {
+    "method": "greedy_search"
+  },
+  "enableEndpoint": true,
+  "rule1MinTrailingSilence": 145
+}

@@ -3,4 +3,6 @@ export interface ModelInfo {
     type: 'stt' | 'tts';
     compressedPath: string;
     extractedPath: string;
+    status?: 'compatible' | 'incompatible' | 'pending';
+    version?: string;
 } 

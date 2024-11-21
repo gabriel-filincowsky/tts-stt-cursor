@@ -1,8 +1,8 @@
 import * as assert from 'assert';
 import { describe, it, before, after } from 'mocha';
 import * as sinon from 'sinon';
-import { GPUManager } from '../../utils/gpu-manager';
-import { GPUContext } from '../../utils/gpu-context';
+import { GPUManager } from '../../src/utils/gpu-manager';
+import { GPUContext } from '../../src/utils/gpu-context';
 
 describe('GPU Management Test Suite', () => {
     let gpuManager: GPUManager;
@@ -46,7 +46,13 @@ describe('GPU Management Test Suite', () => {
     });
 
     describe('GPU Fallback Mechanism', () => {
+        beforeEach(() => {
+            sandbox.restore();
+        });
+
         it('should handle missing GPU gracefully', async () => {
+            sandbox.stub(gpuManager, 'checkGPUAvailability').resolves(false);
+            
             sandbox.stub(gpuManager as any, 'checkCUDA').resolves({ available: false });
             
             const pattern = await gpuManager.getGPUBinaryPattern('1.10.30');
@@ -54,6 +60,7 @@ describe('GPU Management Test Suite', () => {
         });
 
         it('should detect and use GPU when available', async () => {
+            sandbox.stub(gpuManager, 'checkGPUAvailability').resolves(true);
             sandbox.stub(gpuManager as any, 'checkCUDA').resolves({ 
                 available: true, 
                 version: '11.0' 

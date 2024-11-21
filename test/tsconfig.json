@@ -1,9 +1,29 @@
 {
-  "extends": "../tsconfig.json",
+  "extends": "../tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node", "mocha", "vscode"]
+    "rootDir": "..",
+    "outDir": "../out",
+    "types": [
+      "mocha",
+      "node",
+      "sinon",
+      "assert"
+    ],
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": false,
+    "tsBuildInfoFile": "../out/test/.tsbuildinfo",
+    "baseUrl": "..",
+    "paths": {
+      "*": ["node_modules/*", "src/types/*"]
+    }
   },
   "include": [
-    "../src/test/**/*"
+    "./**/*.ts",
+    "../src/**/*.ts"
+  ],
+  "references": [
+    { "path": ".." }
   ]
 } 

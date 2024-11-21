@@ -3,6 +3,38 @@ import * as fs from 'fs/promises';
 import * as fsSync from 'fs';
 import { inspect } from 'util';
 import { outputChannel } from './output-channel';
+import { VersionManager } from '../utils/version-manager';
+import { GPUManager } from './gpu-manager';
+
+async function validateVersionCompatibility(config: any, targetVersion: string): Promise<boolean> {
+    try {
+        // Basic version compatibility check
+        if (config.version && config.version !== targetVersion) {
+            outputChannel.appendLine(`Version mismatch: config version ${config.version} != target version ${targetVersion}`);
+            return false;
+        }
+
+        // Add more specific validation as needed
+        return true;
+    } catch (error) {
+        outputChannel.appendLine(`Version compatibility check failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        return false;
+    }
+}
+
+export async function validateConfig(config: any, type: 'STT' | 'TTS'): Promise<string[]> {
+    const errors: string[] = [];
+    const versionManager = VersionManager.getInstance();
+    const targetVersion = await versionManager.determineTargetVersion();
+
+    // Add version compatibility check
+    if (!await validateVersionCompatibility(config, targetVersion)) {
+        errors.push(`${type} configuration is not compatible with version ${targetVersion}`);
+    }
+
+    // ... rest of validation logic ...
+    return errors;
+}
 
 export async function validateTTSConfig(config: TTSConfig): Promise<string[]> {
     const errors: string[] = [];
@@ -143,6 +175,19 @@ export async function validateSTTConfig(config: STTConfig): Promise<string[]> {
         }
     }
 
+    // Validate model paths
+    if (!await validateModelPath(config.modelPath)) {
+        errors.push(`Invalid model path: ${config.modelPath}`);
+    }
+
+    // Validate GPU configuration if enabled
+    if (config.useGPU) {
+        const gpuManager = GPUManager.getInstance();
+        if (!await gpuManager.checkGPUAvailability()) {
+            errors.push('GPU requested but not available');
+        }
+    }
+
     if (errors.length > 0) {
         outputChannel.appendLine('\n❌ Validation Errors:');
         errors.forEach(error => outputChannel.appendLine(`- ${error}`));
@@ -151,4 +196,16 @@ export async function validateSTTConfig(config: STTConfig): Promise<string[]> {
     }
 
     return errors;
+}
+
+async function validateModelPath(modelPath: string | undefined): Promise<boolean> {
+    if (!modelPath) {
+        return false;
+    }
+    try {
+        await fs.access(modelPath);
+        return true;
+    } catch {
+        return false;
+    }
 } 

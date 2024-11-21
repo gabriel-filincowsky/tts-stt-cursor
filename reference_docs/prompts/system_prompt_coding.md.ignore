@@ -29,3 +29,9 @@ Assist in:
 - Debugging and enhancing existing code to improve functionality and performance.
 - Offering best practices and coding strategies that align with modern software development standards.
 - Providing guidance on code versioning for projects on platforms like GitHub.
+
+## Other particularities
+
+### Terminal Commands
+
+When suggesting commands, ensure they are tailored for Shell, as the latest versions of Windows use Shell as the default terminal environment.

@@ -1,0 +1,195 @@
+tts-stt-cursor/
+├── logs/
+    ├── refresh/
+├── media/
+├── models/
+    ├── stt/
+        ├── sherpa-onnx-streaming-zipformer-en-2023-06-26/
+            ├── test_wavs/
+            ├── README.md
+        ├── model_config.json
+    ├── tts/
+        ├── vits-piper-en_US-amy-low/
+            ├── espeak-ng-data/
+                ├── lang/
+                    ├── aav/
+                    ├── art/
+                    ├── azc/
+                    ├── bat/
+                    ├── bnt/
+                    ├── ccs/
+                    ├── cel/
+                    ├── cus/
+                    ├── dra/
+                    ├── esx/
+                    ├── gmq/
+                    ├── gmw/
+                    ├── grk/
+                    ├── inc/
+                    ├── ine/
+                    ├── ira/
+                    ├── iro/
+                    ├── itc/
+                    ├── jpx/
+                    ├── map/
+                    ├── miz/
+                    ├── myn/
+                    ├── poz/
+                    ├── roa/
+                    ├── sai/
+                    ├── sem/
+                    ├── sit/
+                    ├── tai/
+                    ├── trk/
+                    ├── urj/
+                    ├── zle/
+                    ├── zls/
+                    ├── zlw/
+                ├── voices/
+                    ├── !v/
+            ├── en_US-amy-low.onnx.json
+        ├── model_config.json
+├── native/
+├── out/
+    ├── services/
+        ├── api-service.d.ts
+        ├── api-service.js
+    ├── src/
+        ├── services/
+            ├── api-service.d.ts
+            ├── api-service.js
+        ├── types/
+            ├── gpu-types.d.ts
+            ├── gpu-types.js
+        ├── utils/
+            ├── error-handler.d.ts
+            ├── error-handler.js
+            ├── init-state-manager.d.ts
+            ├── init-state-manager.js
+        ├── extension.d.ts
+        ├── extension.js
+    ├── test/
+        ├── suite/
+            ├── gpu-manager.test.d.ts
+            ├── gpu-manager.test.js
+            ├── index.d.ts
+            ├── index.js
+            ├── version-manager.test.d.ts
+            ├── version-manager.test.js
+        ├── runTest.d.ts
+        ├── runTest.js
+    ├── types/
+        ├── api-types.d.ts
+        ├── api-types.js
+        ├── config.d.ts
+        ├── config.js
+        ├── gpu-types.d.ts
+        ├── gpu-types.js
+        ├── model-info.d.ts
+        ├── model-info.js
+        ├── platform-config.d.ts
+        ├── platform-config.js
+    ├── utils/
+        ├── config-validator.d.ts
+        ├── config-validator.js
+        ├── error-handler.d.ts
+        ├── error-handler.js
+        ├── gpu-context.d.ts
+        ├── gpu-context.js
+        ├── gpu-manager.d.ts
+        ├── gpu-manager.js
+        ├── init-state-manager.d.ts
+        ├── init-state-manager.js
+        ├── migrate-version-state.d.ts
+        ├── migrate-version-state.js
+        ├── model-paths.d.ts
+        ├── model-paths.js
+        ├── output-channel.d.ts
+        ├── output-channel.js
+        ├── sync-versions.d.ts
+        ├── sync-versions.js
+        ├── version-manager.d.ts
+        ├── version-manager.js
+        ├── version-migration.d.ts
+        ├── version-migration.js
+        ├── version-state.d.ts
+        ├── version-state.js
+        ├── version-utils.d.ts
+        ├── version-utils.js
+    ├── extension.d.ts
+    ├── extension.js
+    ├── model-manager.d.ts
+    ├── model-manager.js
+├── reference_docs/
+    ├── large_eventual_reference_only/
+    ├── prompts/
+        ├── common_prompts.md
+        ├── inittial_prompt.md
+        ├── project_refresh.md
+        ├── session_notes.md
+├── scripts/
+    ├── ps1/
+        ├── install-pwsh.ps1
+        ├── project-refresh.ps1
+    ├── download-models.js
+    ├── setup-models.js
+    ├── setup-native.js
+    ├── setup-test-env.js
+    ├── setup-test-fixtures.js
+├── src/
+    ├── scripts/
+    ├── services/
+        ├── api-service.ts
+    ├── types/
+        ├── api-types.ts
+        ├── config.d.ts
+        ├── config.ts
+        ├── gpu-types.ts
+        ├── model-info.ts
+        ├── platform-config.ts
+        ├── release.d.ts
+        ├── sherpa-onnx-node.d.ts
+        ├── tar.d.ts
+        ├── unbzip2-stream.d.ts
+        ├── version-info.d.ts
+    ├── utils/
+        ├── config-validator.ts
+        ├── error-handler.ts
+        ├── gpu-context.ts
+        ├── gpu-manager.ts
+        ├── init-state-manager.ts
+        ├── migrate-version-state.ts
+        ├── model-paths.ts
+        ├── output-channel.ts
+        ├── sync-versions.ts
+        ├── version-manager.ts
+        ├── version-migration.ts
+        ├── version-state.ts
+        ├── version-utils.ts
+    ├── webview/
+        ├── script.js
+    ├── extension.ts
+    ├── model-manager.ts
+├── test/
+    ├── fixtures/
+        ├── configs/
+            ├── stt-config.json
+            ├── tts-config.json
+        ├── models/
+            ├── stt/
+            ├── tts/
+        ├── sherpa-version.json
+    ├── suite/
+        ├── gpu-manager.test.ts
+        ├── index.ts
+        ├── version-manager.test.ts
+    ├── runTest.ts
+    ├── tsconfig.json
+├── CHANGELOG.md
+├── GenerateDirectoryStructureTSprojects.ps1
+├── package.json
+├── README.md
+├── sherpa-onnx-nodejs_ref_foundational.md
+├── sherpa-version.json
+├── tsconfig.base.json
+├── tsconfig.json

@@ -70,30 +70,43 @@
     }
   },
   "scripts": {
-    "preinstall": "tsc -p ./",
-    "postinstall": "node scripts/setup-models.js && node scripts/setup-native.js",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run setup-test-env",
-    "setup-test-env": "node scripts/setup-test-env.js",
-    "test": "mocha out/test/**/*.js"
+    "clean": "rimraf out/",
+    "prebuild": "npm run clean",
+    "build": "npx tsc -b --verbose",
+    "build:test": "npx tsc -b test/tsconfig.json --verbose",
+    "compile": "npx tsc -b tsconfig.json test/tsconfig.json --verbose",
+    "watch": "npx tsc -b tsconfig.json test/tsconfig.json -w --preserveWatchOutput",
+    "pretest": "npm run compile",
+    "test": "node --force-node-api-uncaught-exceptions-policy=true ./out/test/runTest.js",
+    "setup-test-env": "node ./scripts/setup-test-env.js",
+    "setup-test-fixtures": "node ./scripts/setup-test-fixtures.js",
+    "refresh": "pwsh ./scripts/ps1/project-refresh.ps1",
+    "refresh-verbose": "pwsh ./scripts/ps1/project-refresh.ps1 -Verbose"
   },
   "dependencies": {
     "extract-zip": "^2.0.1",
+    "node-fetch": "^2.6.7",
+    "semver": "^7.5.4",
     "sherpa-onnx-node": "1.10.30",
     "tar": "^6.2.0",
     "unbzip2-stream": "^1.4.3"
   },
   "devDependencies": {
+    "@types/assert": "^1.5.10",
+    "@types/glob": "^8.1.0",
     "@types/mocha": "^10.0.9",
     "@types/node": "^14.17.0",
+    "@types/node-fetch": "^2.6.4",
+    "@types/semver": "^7.5.0",
     "@types/sinon": "^10.0.20",
     "@types/vscode": "^1.60.0",
     "@vscode/test-electron": "^2.3.8",
     "mocha": "^10.8.2",
-    "sinon": "^15.2.0",
+    "sinon": "^16.1.1",
     "ts-node": "^10.9.2",
-    "typescript": "^4.4.3"
+    "typescript": "^4.4.3",
+    "rimraf": "^5.0.5",
+    "glob": "^8.1.0"
   },
   "enabledApiProposals": [
     "speech"
@@ -110,5 +123,28 @@
     "models/**/*",
     "media/**/*",
     "native/**/*"
+  ],
+  "config": {
+    "sherpa": {
+      "minVersion": "1.10.0",
+      "recommendedVersion": "1.10.30",
+      "versionCheckUrl": "https://api.github.com/repos/k2-fsa/sherpa-onnx/releases",
+      "binaryBaseUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download",
+      "api": {
+        "cacheDuration": 3600000,
+        "headers": {
+          "Accept": "application/vnd.github.v3+json",
+          "User-Agent": "tts-stt-cursor"
+        }
+      }
+    }
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:tts-stt-cursor.startSTT",
+    "onCommand:tts-stt-cursor.startTTS",
+    "onCommand:tts-stt-cursor.selectVoice",
+    "onCommand:tts-stt-cursor.testTTS",
+    "onCommand:tts-stt-cursor.testSTT"
   ]
 }

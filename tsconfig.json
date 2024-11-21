@@ -1,27 +1,20 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "target": "es6",
+    "rootDir": ".",
     "outDir": "out",
-    "rootDir": "src",
+    "composite": true,
+    "declarationMap": true,
+    "declaration": true,
     "sourceMap": true,
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "lib": ["ES2020", "DOM"],
-    "types": [
-      "node",
-      "mocha",
-      "vscode",
-      "sinon"
-    ],
-    "allowSyntheticDefaultImports": true
+    "incremental": true,
+    "tsBuildInfoFile": "./out/.tsbuildinfo"
   },
-  "include": [
-    "src/**/*"
-  ],
   "exclude": [
     "node_modules",
     ".vscode-test"
+  ],
+  "include": [
+    "src/**/*"
   ]
 } 

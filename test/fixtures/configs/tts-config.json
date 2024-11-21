@@ -1,0 +1,7 @@
+{
+  "model": "test/fixtures/models/tts/model.onnx",
+  "modelConfig": "test/fixtures/models/tts/config.json",
+  "tokens": "test/fixtures/models/tts/tokens.txt",
+  "numThreads": 1,
+  "debug": true
+}

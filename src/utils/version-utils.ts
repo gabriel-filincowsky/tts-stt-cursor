@@ -11,4 +11,12 @@ export function meetsMinimumVersion(current: string, minimum: string): boolean {
     }
     
     return true;
+}
+
+export function normalizeVersion(version: string): string {
+    return version.replace(/^v/, '');
+}
+
+export function formatVersion(version: string): string {
+    return version.startsWith('v') ? version : `v${version}`;
 } 

@@ -1,5 +1,15 @@
 {
-    "sherpa-onnx-node": "1.10.30",
-    "binaries": "1.10.30",
-    "lastVerified": "2024-11-17T20:00:00Z"
-} 
+    "sherpaNode":  "1.10.30",
+    "lastVerified":  "2024-11-18T20:38:05.8537579-05:00",
+    "api":  {
+                "lastCheck":  "2024-11-18T20:38:05.8557786-05:00",
+                "rateLimit":  {
+                                  "remaining":  60,
+                                  "reset":  0
+                              }
+            },
+    "platform":  {
+
+                 },
+    "binaries":  "0.0.0"
+}
