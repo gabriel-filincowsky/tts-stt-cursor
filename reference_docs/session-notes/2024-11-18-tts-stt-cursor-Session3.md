@@ -1,4 +1,4 @@
-# Previous Session Summaries
+# Previous Session Notes Summaries
 
 ## Summary of Session 1 ([Go to Session](2024-11-17-tts-stt-cursor-Session1.md))
 
@@ -31,7 +31,7 @@ To resolve this, the team restructured the scripts in `package.json`, separating
 
 ---
 
-# 2024-11-18 3rd Session
+# 2024-11-18 3rd Session Notes
 
 ## Version Management System Overhaul
 

@@ -86,23 +86,60 @@ export async function activate(context: vscode.ExtensionContext) {
         const versionManager = VersionManager.getInstance();
         const targetVersion = await versionManager.determineTargetVersion();
         
-        // Missing: Command Registration
-        // This is where we need to register all commands
+        // Initialize Sherpa before registering commands
+        await initializeSherpa(context);
+        
+        // Register all commands
         context.subscriptions.push(
-            vscode.commands.registerCommand('tts-stt-cursor.startSTT', () => {
-                // Implementation
+            vscode.commands.registerCommand('tts-stt-cursor.startSTT', async () => {
+                try {
+                    if (!sherpaState.isInitialized || !sherpaState.recognizer) {
+                        await initializeSherpa(context);
+                    }
+                    await createWebviewPanel(context, 'STT', new ModelManager(context, outputChannel.appendLine.bind(outputChannel)));
+                } catch (error) {
+                    outputChannel.appendLine(`STT command failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    throw error;
+                }
             }),
-            vscode.commands.registerCommand('tts-stt-cursor.startTTS', () => {
-                // Implementation
+            
+            vscode.commands.registerCommand('tts-stt-cursor.startTTS', async () => {
+                try {
+                    if (!sherpaState.isInitialized || !sherpaState.synthesizer) {
+                        await initializeSherpa(context);
+                    }
+                    await createWebviewPanel(context, 'TTS', new ModelManager(context, outputChannel.appendLine.bind(outputChannel)));
+                } catch (error) {
+                    outputChannel.appendLine(`TTS command failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                    throw error;
+                }
             }),
-            // ... other commands
+            
+            vscode.commands.registerCommand('tts-stt-cursor.selectVoice', async () => {
+                // Will implement voice selection UI
+                vscode.window.showInformationMessage('Voice selection coming soon');
+            }),
+            
+            vscode.commands.registerCommand('tts-stt-cursor.testTTS', async () => {
+                try {
+                    await testTTSConfig(context);
+                    vscode.window.showInformationMessage('TTS test completed successfully');
+                } catch (error) {
+                    vscode.window.showErrorMessage(`TTS test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+            }),
+            
+            vscode.commands.registerCommand('tts-stt-cursor.testSTT', async () => {
+                try {
+                    await testSTTConfig(context);
+                    vscode.window.showInformationMessage('STT test completed successfully');
+                } catch (error) {
+                    vscode.window.showErrorMessage(`STT test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+            })
         );
 
-        // Missing: WebView Panel Initialization
-        // This is needed for UI interactions
-        
-        // Missing: Model Initialization
-        // Required before any STT/TTS operations
+        outputChannel.appendLine('✅ All commands registered successfully');
         
     } catch (error) {
         outputChannel.appendLine(`Activation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);

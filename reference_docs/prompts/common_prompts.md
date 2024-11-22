@@ -32,7 +32,7 @@ Therefore, start by thoroughly assessing the issue, conceptualizing a solution, 
 
 # Session Notes Action, Issues, and Outcomes
 
-Please create a new section in the @session_notes.md file to record the latest modifications. Ensure it addresses all the critical questions comprehensively:  
+Please create the notes to record the latest modifications. Ensure it addresses all the critical questions comprehensively:  
 
 1. What prompted us to take action?  
 2. What issue was identified?  
@@ -40,7 +40,7 @@ Please create a new section in the @session_notes.md file to record the latest m
 4. What solution was implemented?  
 5. What outcome is anticipated?  
 
-The session notes should provide detailed and thoughtful responses to these questions, even if the questions themselves are not explicitly stated in the text.
+The session notes should provide detailed and thoughtful responses to these questions, even if the questions themselves are not explicitly stated in the text. Prioritize a narrative style.
 
 ---
 
@@ -101,3 +101,11 @@ Please let me know in advance if you require me to share with you the entire con
 
 ---
 
+# Consult the Codebase and Project Structure
+
+- Please consult the @Codebase for overall details and locate the information or file you need. You may be able to access them directly.
+- Refer to the @project_structure.txt file for a structured view of the project's relevant files (.ts, .js, .json, .md, .ps1) and directories. Note that standard development folders (node_modules, .git, .vscode), hidden files, and package-lock.json are excluded from this view.
+
+**Note:** The shared information (snippets and excerpts) might be incomplete due to length restrictions. If you need to consult or edit a specific file, please request its full content in advance to ensure you have access to all necessary details.
+
+---

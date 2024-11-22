@@ -30,16 +30,13 @@
       },
       {
         "command": "tts-stt-cursor.testTTS",
-        "title": "TTS-STT: Test TTS Configuration",
+        "title": "Test TTS Configuration",
         "category": "TTS-STT"
       },
       {
-        "command": "tts-stt.testTTS",
-        "title": "Test TTS Configuration"
-      },
-      {
-        "command": "tts-stt.testSTT",
-        "title": "Test STT Configuration"
+        "command": "tts-stt-cursor.testSTT",
+        "title": "Test STT Configuration",
+        "category": "TTS-STT"
       }
     ],
     "menus": {
@@ -140,11 +137,6 @@
     }
   },
   "activationEvents": [
-    "onStartupFinished",
-    "onCommand:tts-stt-cursor.startSTT",
-    "onCommand:tts-stt-cursor.startTTS",
-    "onCommand:tts-stt-cursor.selectVoice",
-    "onCommand:tts-stt-cursor.testTTS",
-    "onCommand:tts-stt-cursor.testSTT"
+    "onStartupFinished"
   ]
 }

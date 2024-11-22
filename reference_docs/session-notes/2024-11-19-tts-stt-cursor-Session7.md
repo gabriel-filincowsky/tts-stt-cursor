@@ -1,4 +1,4 @@
-# Previous Session Summaries
+# Previous Session Notes Summaries
 
 ## Summary of Session 1 ([Go to Session](2024-11-17-tts-stt-cursor-Session1.md))
 
@@ -47,7 +47,7 @@ To resolve these issues, the test infrastructure was restructured according to V
 
 ---
 
-# 2024-11-19 7th Session
+# 2024-11-19 7th Session Notes
 
 ## Test Suite and Module Resolution Fixes
 

@@ -1,4 +1,4 @@
-# Previous Session Summaries
+# Previous Session Notes Summaries
 
 ## Summary of Session 1 ([Go to Session](2024-11-17-tts-stt-cursor-Session1.md))
 
@@ -20,7 +20,7 @@ Core systems integration is active, with operational model management and GPU de
 
 ---
 
-# 2024-11-18 2nd Session
+# 2024-11-18 2nd Session Notes
 
 ## Installation Process Failure Resolution
 

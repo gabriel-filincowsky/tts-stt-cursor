@@ -1,4 +1,4 @@
-# Previous Session Summaries
+# Previous Session Notes Summaries
 
 ## Summary of Session 1 ([Go to Session](2024-11-17-tts-stt-cursor-Session1.md))
 
@@ -35,7 +35,7 @@ To resolve these problems, the version management system was overhauled. Central
 
 ---
 
-# 2024-11-19 4th Session
+# 2024-11-19 4th Session Notes
 
 ## Version State Management & GPU Integration Enhancement
 

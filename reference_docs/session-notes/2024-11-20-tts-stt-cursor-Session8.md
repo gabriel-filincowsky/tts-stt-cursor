@@ -1,4 +1,4 @@
-# Previous Session Summaries
+# Previous Session Notes Summaries
 
 ## Summary of Session 1 ([Go to Session](2024-11-17-tts-stt-cursor-Session1.md))
 
@@ -51,7 +51,7 @@ Package dependencies were updated to include missing type definitions and to upd
 
 ---
 
-# 2024-11-20 8th Session
+# 2024-11-20 8th Session Notes
 
 ## Critical Follow-up: Code Recovery and Implementation Audit
 

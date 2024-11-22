@@ -1,0 +1,11 @@
+session-notes/
+├── scripts/
+├── 2024-11-17-tts-stt-cursor-Session1.md
+├── 2024-11-18-tts-stt-cursor-Session2.md
+├── 2024-11-18-tts-stt-cursor-Session3.md
+├── 2024-11-19-tts-stt-cursor-Session4.md
+├── 2024-11-19-tts-stt-cursor-Session5.md
+├── 2024-11-19-tts-stt-cursor-Session6.md
+├── 2024-11-19-tts-stt-cursor-Session7.md
+├── 2024-11-20-tts-stt-cursor-Session8.md
+├── 2024-11-21-tts-stt-cursor-Session9.md

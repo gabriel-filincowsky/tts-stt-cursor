@@ -1,4 +1,4 @@
-# 2024-11-17 1st Session
+# 2024-11-17 1st Session Notes
 
 ## 1. Project Context & Architecture
 ### 1.1 Project Overview
